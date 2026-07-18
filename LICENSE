@@ -1,0 +1,35 @@
+MIT License
+
+Copyright (c) 2026 Rome Protocol
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+This LICENSE applies to the repository scaffolding and Rome-authored code only
+(the Hardhat configuration, the deploy/gamut tasks under `tasks/`, and the test
+contracts under `contracts/test/`). The vendored Aave V3 protocol code — a slim
+first-cut of aave-dao/aave-v3-origin@3.6.0 — retains its upstream per-file
+licenses, as marked by each file's `SPDX-License-Identifier` header: the protocol
+core is under the Business Source License 1.1 (BUSL-1.1), the interfaces and
+periphery under MIT, and the vendored Gnosis `GPv2SafeERC20` under
+LGPL-3.0-or-later. See https://github.com/aave-dao/aave-v3-origin for the
+upstream sources and for the full text and parameters (Licensor, Change Date,
+and Additional Use Grant) of the Business Source License 1.1 that governs the
+BUSL-1.1 files.
