@@ -8,7 +8,7 @@ Canonical Aave V3 (slim first-cut) deployed on **Rome Protocol** — an EVM-comp
 
 **Architectural principle**: modify the token (`SPL_ERC20_cached`, lives in `rome-solidity`), keep the lending protocol canonical. Same pattern as `rome-uniswap-v3` and `compound-on-rome-comet`.
 
-**Full living docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) — what runs, how to deploy, oracle (OG-V2 shim), flash-loan pre-approve pattern, day-2 ops tasks, live Hadrian addresses. End-user guide for the demo UI: [`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
+**Full living docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) — what runs, oracle (OG-V2 shim), flash-loan pre-approve pattern, live Hadrian addresses. End-user guide for the demo UI: [`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
 
 ## Scope (slim + view helpers)
 
@@ -37,7 +37,7 @@ Excluded (re-add if needed):
 
 ## Configuration / chain metadata
 
-Chain ids, RPC URLs, gas-token mints, cached wrapper addresses, etc. for every Rome chain are canonical at **[`rome-protocol/registry`](https://github.com/rome-protocol/registry)**. Don't hardcode them in `hardhat.config.ts`, the deploy task, or `deployments/*.json` patches.
+Chain ids, RPC URLs, gas-token mints, cached wrapper addresses, etc. for every Rome chain are canonical at **[`rome-protocol/rome-registry`](https://github.com/rome-protocol/rome-registry)**. Don't hardcode them in `hardhat.config.ts`, the deploy task, or `deployments/*.json` patches.
 
 After a successful deploy, update the registry's `chains/<id-slug>/contracts.json` for the affected chain with the new Aave V3 contracts.
 
@@ -183,7 +183,7 @@ When wiring a UI or consumer, use the addresses from `deployments/<chain>.json`.
 
 | What changed | Run |
 |---|---|
-| Vendored contract (any .sol under `contracts/protocol/`, `contracts/tokenization/`, etc.) | `npx hardhat compile` + redeploy stack + `hardhat gamut` on Hadrian |
+| Vendored contract (any .sol under `contracts/protocol/`, `contracts/tokenization/`, etc.) | `npx hardhat compile` + redeploy the stack + run the smoke gamut |
 | Deploy task | `npx hardhat deploy --network hadrian` + `init-reserve ×2` + `hardhat gamut` |
 | init-reserve task | `hardhat init-reserve` on Hadrian + verify aToken/vToken via `pool.getReserveData` |
 | Network entry added | `npx hardhat compile` then dry-run deploy |
@@ -243,4 +243,4 @@ Post-deploy gamut (24/24 PASS, 2026-05-25):
 
 All actions within Solana's 1.4M-CU per-sig + 256K-heap limits. liquidationCall is the heaviest single op at 10.21M total CU across 39 iter sigs. Same shape as Marcus (38-sig liquidation, 22-sig flashLoan).
 
-The full deploy artifact is `deployments/hadrian.json`. Registry mirror: `chains/200010-hadrian/contracts.json` (post `/publish-registry-pr`).
+The full deploy artifact is `deployments/hadrian.json`. Registry mirror: `chains/200010-hadrian/contracts.json`.
