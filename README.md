@@ -26,3 +26,6 @@ licenses (BUSL-1.1 / MIT / LGPL-3.0) per each file's SPDX header. See
 [LICENSE](./LICENSE) and
 [aave-dao/aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) for the
 Business Source License parameters.
+
+## Building on Rome with an agent
+See [`AGENTS.md`](./AGENTS.md) — the Rome-specific rules a coding agent needs.
