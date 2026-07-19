@@ -1,5 +1,7 @@
 # rome-aave-v3
 
+> **Built on [Rome Protocol](https://docs.rome.builders)** — EVM chains that run natively inside the Solana runtime, where Solidity apps call Solana programs atomically (CPI) and Solana users drive EVM apps: two VMs, one chain, one block.
+
 Canonical Aave V3 on Rome Protocol — a slim first-cut of
 [aave-dao/aave-v3-origin@3.6.0](https://github.com/aave-dao/aave-v3-origin),
 deployed against Rome's `SPL_ERC20_cached` SPL-token wrappers so an EVM lending
