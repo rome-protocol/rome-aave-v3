@@ -2,8 +2,8 @@
 
 Living documentation for the Aave V3 deployment on Rome (reference chain:
 **Hadrian**, `200010`, Rome testnet on Solana devnet substrate). Covers what
-runs, how it differs from mainnet Aave, how to deploy it, and the operational
-tasks. End-user instructions for the demo UI live in
+runs, how it differs from mainnet Aave, and how to integrate with it. End-user
+instructions for the demo UI live in
 [`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
 
 > Addresses below are point-in-time for Hadrian; `deployments/<chain>.json`
@@ -27,8 +27,8 @@ only Rome-specific pieces sit at the edges:
 |---|---|---|
 | Lending protocol | Aave V3.6 Pool + tokens + configurator | **No** — byte-identical mainnet source |
 | Reserve underlyings | `SPL_ERC20_cached` wrappers (wUSDC/wETH/wSOL) + mock ERC-20s (HEAT/SALT/MILK/OIL) | The wrappers are Rome (ERC-20 view over a real Solana SPL token) |
-| Price oracle | `AaveOracle` reading per-asset sources | Real assets read **live Pyth via OG-V2** (see §5); mock tokens use fixed `MockAggregator`s |
-| Flash-loan receivers | user-supplied; demo ships a pre-approved one | Pre-approve pattern is Rome's answer to Solana's account cap (see §6) |
+| Price oracle | `AaveOracle` reading per-asset sources | Real assets read **live Pyth via OG-V2** (see §2); mock tokens use fixed `MockAggregator`s |
+| Flash-loan receivers | user-supplied; demo ships a pre-approved one | Pre-approve pattern is Rome's answer to Solana's account cap (see §3) |
 
 Settlement is Solana-fast; the contracts and JSON-RPC surface are
 EVM-canonical, so MetaMask + ethers/viem + the Aave SDK all work as-is.
@@ -51,78 +51,7 @@ once per address).
 
 ---
 
-## 2. Prerequisites
-
-- Node + the repo's hardhat (Hardhat 3). `npm install`.
-- A funded deployer key in the hardhat keystore as `HADRIAN_PRIVATE_KEY` (the
-  Hadrian deployer = pool admin = `0x1f4946Be340F06c46A50E65084790968aBcc48F6`).
-  > Keystore is per-repo. Source the Hadrian key from THIS repo's keystore;
-  > rome-solidity's key of the same name resolves to a different address
-  > (see the keystore-drift note in the monorepo memory).
-- Network config is in `hardhat.config.ts` (`hadrian`, `marcus`, etc.).
-
-All tasks run as `npx hardhat <task> --network hadrian`.
-
----
-
-## 3. Deploying the protocol from scratch
-
-Order matters — reserves depend on the core stack, the oracle depends on
-reserves, flash-loan smoke depends on liquidity.
-
-```bash
-# 1. Core stack — PoolAddressesProvider → ACLManager → IRS → Pool (proxy) →
-#    PoolConfigurator → aToken/debtToken impls → DataProvider. (8 steps.)
-npx hardhat deploy --network hadrian
-#    If the proxy preflight trips on Rome (payer-pool / holder contention),
-#    use the resume-capable, client-side-signed variant instead:
-npx hardhat deploy-resume --network hadrian
-
-# 2. View helper the UI needs for getReservesData / getUserReservesData.
-npx hardhat deploy-ui-helpers --network hadrian
-
-# 3. Mock collateral tokens + faucet (HEAT/SALT/MILK/OIL).
-npx hardhat deploy-faucet --network hadrian
-
-# 4. List each reserve (asset + price source + risk params). One per asset.
-npx hardhat init-reserve --network hadrian --asset <underlying> --price-feed <aggregator> ...
-
-# 5. (optional) Auxiliary view helpers — WalletBalanceProvider + LiquidationDataProvider.
-npx hardhat deploy-aux --network hadrian
-
-# 6. (optional) E-mode categories (Stablecoin / Crypto correlated groups).
-npx hardhat setup-emodes --network hadrian
-
-# 7. Seed borrow-side liquidity so borrows/flash-loans have funds.
-npx hardhat seed-pool --network hadrian
-```
-
-Every task writes resulting addresses to `deployments/<network>.json`. Publish
-them to the registry via the monorepo `/publish-registry-pr` script
-(`apps/aave/<chainId>-<slug>.json` + `chains/<...>/contracts.json`).
-
----
-
-## 4. Operational tasks (day-2)
-
-| Task / script | What it does |
-|---|---|
-| `hardhat gamut --network hadrian` | Stress gamut: Aave V3 × cached wrappers (supply/borrow/repay/withdraw across reserves) |
-| `hardhat gamut-extras --network hadrian` | Smoke: **multi-asset flashLoan** (pre-approved receiver) + setUserEMode + repayWithATokens. Expect all PASS. |
-| `hardhat deploy-flash-receiver --network hadrian [--demo true]` | Deploy + `init()` a pre-approved flash-loan receiver. `--demo true` deploys the no-initiator-check `DemoOpenMultiFlashReceiver` the public UI uses — **hard-gated to a testnet chainId allowlist** (see §6). |
-| `hardhat check-registry-drift --network hadrian [--registry <path>]` | Read-only: diff `deployments/<net>.json` + live on-chain oracle sources against the registry (`apps/aave/` + `chains/contracts.json`). Exits non-zero on drift; use as a pre-publish gate. |
-| `hardhat seed-pool --network hadrian` | Supply deployer-held wrapper liquidity into the pool (borrow/flash-loan funds) |
-| `hardhat setup-emodes --network hadrian` | Configure E-mode categories + bind assets |
-| `hardhat reset-oracle-prices --network hadrian` | Restore all reserve oracle sources to canonical mock prices (undo §5 or a demo price drop) |
-| `scripts/migrate-oracle-to-ogv2-resilient.ts` | Point USDC/ETH/SOL at live-Pyth OG-V2 via a resilient shim (see §5) |
-| `scripts/revert-oracle-to-mocks.ts` | Point USDC/ETH/SOL back at their mock aggregators |
-| `scripts/liquidation-demo-setup.ts` | Stand up a liquidatable victim for a live liquidation demo (see §7) |
-
-Scripts run via `npx hardhat run scripts/<name>.ts --network hadrian`.
-
----
-
-## 5. Oracle — live Pyth via Oracle Gateway V2
+## 2. Oracle — live Pyth via Oracle Gateway V2
 
 `AaveOracle` reads a price source per asset. On Hadrian:
 
@@ -151,12 +80,9 @@ Migrate: `npx hardhat run scripts/migrate-oracle-to-ogv2-resilient.ts --network 
 `setAssetSources`, verifies AaveOracle after). Revert:
 `scripts/revert-oracle-to-mocks.ts`.
 
-Full design + risks: rome-specs
-`active/technical/2026-05-27-aave-v3-ogv2-oracle-integration.md`.
-
 ---
 
-## 6. Flash loans — the pre-approve pattern
+## 3. Flash loans — the pre-approve pattern
 
 Single-asset `flashLoanSimple` works out of the box. **Multi-asset
 `Pool.flashLoan` (2+ cached wrappers) needed one Rome-specific change** —
@@ -186,13 +112,11 @@ Receiver contracts (`contracts/test/`):
   (`DEMO_RECEIVER_TESTNET_CHAIN_IDS`), so the no-initiator receiver can never be
   shipped to a mainnet chain by a stray flag.
 
-Smoke it: `npx hardhat gamut-extras --network hadrian`. Full design + the
-empirical account breakdown: rome-specs
-`active/technical/2026-05-27-multi-asset-flashloan-on-rome.md`.
+Smoke it: `npx hardhat gamut-extras --network hadrian`.
 
 ---
 
-## 7. Setting up a live liquidation demo
+## 4. Setting up a live liquidation demo
 
 You can't liquidate your own position, and Aave/the demo run **no keeper bot**
 — liquidation is a manual `Pool.liquidationCall`. To demo it you need a
@@ -216,7 +140,7 @@ Pyth and can't be moved.)
 
 ---
 
-## 8. Verification commands
+## 5. Verification commands
 
 ```bash
 # A price reads sane through the oracle (8-dec USD):
@@ -238,7 +162,7 @@ npx hardhat gamut-extras --network hadrian   # expect all PASS
 
 ---
 
-## 9. Mainnet-readiness checklist
+## 6. Mainnet-readiness checklist
 
 Hadrian is a **testnet demo**. Several deliberate testnet choices MUST change
 before any mainnet promotion — none are bugs on testnet:
@@ -250,7 +174,7 @@ before any mainnet promotion — none are bugs on testnet:
   split roles across a multisig / timelock.
 - **Treasury = deployer, reserve factor 0.** No `Collector` is deployed (slim
   cut); reserve fees would accrue to the deployer EOA. Deploy `treasury/Collector`
-  + set a real treasury before reserve factor > 0. (Already a CLAUDE.md blocker.)
+  + set a real treasury before reserve factor > 0.
 - **Resilient oracle shim falls back to a frozen mock.**
   `PythPullToV2ShimResilient` returns a `MockAggregator` price on any OG-V2
   revert (keeper lapse) so the market never reverts — correct for a testnet
@@ -261,29 +185,12 @@ before any mainnet promotion — none are bugs on testnet:
   `PriceOracleSentinel` gate liquidations on staleness.
 - **Demo flash receiver has no initiator check.** `DemoOpenMultiFlashReceiver`
   is testnet/demo-only and now **mechanically gated** to a testnet chainId
-  allowlist in `deploy-flash-receiver` (§6). Mainnet apps inherit
+  allowlist in `deploy-flash-receiver` (§3). Mainnet apps inherit
   `PreApprovedFlashReceiverBase` (initiator whitelist).
 - **MockAggregator prices are frozen** for HEAT/SALT/MILK/OIL (invented demo
   tokens). Mainnet markets list only assets with a real price feed.
 
-### Registry drift to reconcile
-
-`check-registry-drift` (§4) surfaces real drift on Hadrian today — reconcile via
-`/publish-registry-pr` before treating the registry as canonical for this app:
-
-- `chains/200010-hadrian/contracts.json` lists the Aave core at the **05-24
-  deploy** addresses (e.g. `AavePool 0x9352FB…`), but the live deploy +
-  `apps/aave/200010-hadrian.json` are the **05-25 redeploy** (`Pool 0x56cD6B…`).
-  The contracts.json Aave rows are stale.
-- `apps/aave` records all three feeds as `mock-aggregator`, but on-chain
-  USDC/ETH/SOL now read **live Pyth via resilient shims** (the OG-V2 migration,
-  §5). That migration was never reflected in the registry. (Fix the oracle
-  wiring via the `rome-solidity` oracle-deploy path, not by hand-editing
-  `oracle.json`.)
-
-## 10. Related
+## 7. Related
 
 - Demo UI + user guide: [`rome-aave-v3-demo`](https://github.com/rome-protocol/rome-aave-v3-demo)
-- Specs: rome-specs `active/technical/2026-05-27-multi-asset-flashloan-on-rome.md`,
-  `active/technical/2026-05-27-aave-v3-ogv2-oracle-integration.md`
 - Registry entry: `apps/aave/200010-hadrian.json`
