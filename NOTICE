@@ -1,0 +1,18 @@
+rome-aave-v3
+Copyright (c) Rome Protocol contributors
+
+This repository is a deployment-focused fork of Aave V3
+(https://github.com/aave-dao/aave-v3-origin, v3.6.0), adapted to deploy
+against Rome Protocol's SPL_ERC20_cached token wrappers on an EVM chain
+running natively inside the Solana runtime.
+
+Licensing is preserved from upstream on a per-file basis (see SPDX
+headers and LICENSE): core protocol contracts remain under the Business
+Source License 1.1 (BUSL-1.1) as published by Aave DAO; periphery and
+interface files retain their original MIT / LGPL-3.0 licenses. The
+BUSL-1.1 terms, including the Change Date and Additional Use Grant, are
+those set by the upstream licensor (Aave DAO) — this fork adds no new
+grants and removes no restrictions.
+
+Modifications relative to upstream are limited to deployment scripts,
+token-wrapper integration, and configuration for Rome chains.
