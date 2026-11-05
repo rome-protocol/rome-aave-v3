@@ -15,8 +15,8 @@ import { task } from "hardhat/config";
 // On Rome that in-callback approve pushes the per-sig account count past the
 // cached-wrapper composition limit for 2+ cached SPL wrappers. The pre-approve
 // pattern moves the approve into a separate setup tx so the flash loan tx
-// stays under the limit. See `CLAUDE.md § Multi-asset Flash Loan Pattern`
-// and `PreApprovedFlashReceiverBase.sol`.
+// stays under the limit. See `docs/AAVE-V3-ON-ROME.md` §6 (Flash loans — the
+// pre-approve pattern) and `PreApprovedFlashReceiverBase.sol`.
 
 // DemoOpenMultiFlashReceiver has NO initiator check — anyone can call
 // Pool.flashLoan against it. It must only ever exist on a Rome testnet/demo

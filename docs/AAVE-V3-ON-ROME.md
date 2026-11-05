@@ -254,8 +254,9 @@ Receiver contracts (`contracts/test/`):
   (`DEMO_RECEIVER_TESTNET_CHAIN_IDS`), so the no-initiator receiver can never be
   shipped to a mainnet chain by a stray flag.
 
-Smoke it: `npx hardhat gamut-extras --network hadrian`. Account
-counts are measured by `scripts/measure-price-cost.ts`, not by `gamut-extras`.
+Smoke it: `npx hardhat gamut-extras --network hadrian`. `gamut-extras` does
+not measure account counts; `scripts/measure-price-cost.ts` measures them for
+borrow, withdraw and liquidationCall (§5).
 
 ---
 
