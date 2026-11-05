@@ -60,10 +60,13 @@ that market — Pool `0x54701445…` — is retired in place, not drained).
 | wETH (8d, 7000/7500/10500) | `0x02aeace038269f9961c93d04dcacd6fb3adfa55f` | `0x21B5602CdDAD66008e328F10Af5eB6563B065330` | `0x4cBEAA467e687CD9d4b73ac9Ec0dfC000A605B30` | `0x7465eEd581FBc7068F76e4A76E135ac4027f4c8D` ($3000) |
 | wSOL (9d, 6500/7000/10500) | `0x39f36444fcb79b3e691544aee2a832ebef54ca9f` | `0x9d9c3bf348Bf40fd35f6F9F0C46921e7Bd7e1ED0` | `0x485b8827E17c05Aa46C2E0F34388919e73DcAa86` | `0x0a1a56F815568Dc5883f7205BFf94522112106A5` ($200) |
 
-The live price source of each reserve is its BOOK shim, not the fixed aggregator above (the fixed
-aggregators are the fallback and the target of `scripts/revert-oracle-to-constants.ts`): wUSDC
-`0x77b79B65105df5caE7D296f074989cFd721E9e79`, wETH `0xc0767d12B73B55855D893E4e5456C602550b253f`,
-wSOL `0x72Dc30C129Ec17e3a1Dd5B5541efb00516fD70A0` (see §5).
+The live price source of each reserve is its BOOK shim, not the fixed aggregator above. The fixed
+aggregators in the table are only the switch-back target of `scripts/revert-oracle-to-constants.ts`;
+they are not the shims' fallback (each shim's `fallbackSource()` is a different fixed aggregator,
+see §5). BOOK shims: wUSDC `0x77b79B65105df5caE7D296f074989cFd721E9e79` (fallback
+`0x9165A273F6be477Ef110793b0C64383cE9FD81C0`), wETH `0xc0767d12B73B55855D893E4e5456C602550b253f`
+(fallback `0x66D94D25ECdCbA90eD005A23D67D2FdAc3d4412A`), wSOL `0x72Dc30C129Ec17e3a1Dd5B5541efb00516fD70A0`
+(fallback `0x0E7B06BdA8AC5da68684BDfdADf49539a02ecae0`).
 
 `deployments/hadrian.json` (addresses only, committed) is this market's record; the tasks and
 scripts read it, and `deployments/hadrian-oracle-shims.json` holds the BOOK shims (§5).
@@ -252,7 +255,7 @@ Receiver contracts (`contracts/test/`):
   shipped to a mainnet chain by a stray flag.
 
 Smoke it: `npx hardhat gamut-extras --network hadrian`. Account
-counts for the multi-asset flash loan are measured by `gamut-extras`.
+counts are measured by `scripts/measure-price-cost.ts`, not by `gamut-extras`.
 
 ---
 
