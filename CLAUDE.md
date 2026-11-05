@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Canonical Aave V3 (slim first-cut) deployed on **Rome Protocol** — an EVM-compatible layer on Solana. Vendored byte-identical source from `@aave-dao/aave-v3-origin@3.6.0` plus Rome-specific deployment scaffolding.
 
-**Architectural principle**: modify the token (`SPL_ERC20_cached`, lives in `rome-solidity`), keep the lending protocol canonical. Same pattern as `rome-uniswap-v3` and `compound-on-rome-comet`.
+**Architectural principle**: modify the token (`SPL_ERC20_cached`, lives in `rome-solidity`), keep the lending protocol canonical. Same pattern as `compound-on-rome-comet`.
 
-**Full living docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) — what runs, oracle (OG-V2 shim), flash-loan pre-approve pattern, live Hadrian addresses. End-user guide for the demo UI: [`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
+**Full living docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) — what runs, how to deploy, oracle (live BOOK prices through a resilient shim with a fixed fallback), flash-loan pre-approve pattern, day-2 tasks and scripts, live Hadrian addresses. End-user guide for the demo UI: [`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
 
 ## Scope (slim + view helpers)
 
@@ -17,7 +17,7 @@ Vendored: the supply / borrow / repay / withdraw / liquidation surface + view-he
 - **Pool**: `Pool`, `PoolInstance`, `PoolStorage`, `PoolConfigurator`, `PoolConfiguratorInstance`, `PoolAddressesProvider`, `ACLManager`
 - **Tokenization**: `AToken`, `VariableDebtToken`, plus `*Instance` clones + base classes (`IncentivizedERC20`, `ScaledBalanceTokenBase`, `DebtTokenBase`, etc.) — minus delegation flavors
 - **Libraries**: all of `protocol/libraries/{logic,math,types,configuration,helpers}` (SupplyLogic, BorrowLogic, LiquidationLogic, ValidationLogic, PoolLogic, ReserveLogic, etc.)
-- **Oracle**: `AaveOracle` + `mocks/oracle/CLAggregators/MockAggregator` for testnet price feeds + `PriceOracleSentinel` (vendored, not yet deployed — needs Rome-specific sentinel design before wiring to PoolAddressesProvider)
+- **Oracle**: `AaveOracle` + `misc/BookFeedToV2ShimResilient` (live PriceBook BOOK price, fixed fallback when the book is stale) + `mocks/oracle/CLAggregators/MockAggregator` for fixed price feeds + `PriceOracleSentinel` (vendored, not yet deployed — needs Rome-specific sentinel design before wiring to PoolAddressesProvider)
 - **IRS**: `DefaultReserveInterestRateStrategyV2` (V3.6 single-pool-wide design — set via Pool constructor)
 - **Helpers**: `AaveProtocolDataProvider` (view aggregator) + `UiPoolDataProviderV3` (single-call aggregator for UIs) + `WalletBalanceProvider` (batch ERC-20 + native balance reads) + `LiquidationDataProvider` (liquidator view helper)
 - **Flash-loan base classes**: `FlashLoanSimpleReceiverBase` + `FlashLoanReceiverBase` (abstract; downstream user contracts inherit these)
@@ -37,13 +37,13 @@ Excluded (re-add if needed):
 
 ## Configuration / chain metadata
 
-Chain ids, RPC URLs, gas-token mints, cached wrapper addresses, etc. for every Rome chain are canonical at **[`rome-protocol/rome-registry`](https://github.com/rome-protocol/rome-registry)**. Don't hardcode them in `hardhat.config.ts`, the deploy task, or `deployments/*.json` patches.
+Chain ids, RPC URLs, gas-token mints, cached wrapper addresses, etc. for every Rome chain are canonical at **[`rome-protocol/rome-registry`](https://github.com/rome-protocol/rome-registry)**. The `hadrian` entry in `hardhat.config.ts` mirrors the registry; keep it in line, and don't hardcode these values in the deploy task or `deployments/*.json` patches.
 
 After a successful deploy, update the registry's `chains/<id-slug>/contracts.json` for the affected chain with the new Aave V3 contracts.
 
 ## Package manager
 
-**Yarn-only** — `yarn.lock` is checked in; no `package-lock.json`. Always install with `yarn install --frozen-lockfile`. Same rationale as `rome-uniswap-v2/v3`: Hardhat 3 + ESM doesn't tolerate the stale ts-node tree that `npm install` brings in.
+**Yarn-only** — `yarn.lock` is checked in; no `package-lock.json`. Always install with `yarn install --frozen-lockfile`. Rationale: Hardhat 3 + ESM doesn't tolerate the stale ts-node tree that `npm install` brings in.
 
 ## The `openzeppelin-contracts` symlink trick
 
@@ -89,9 +89,6 @@ npx hardhat gamut --network <chain> \
 
 | Network | chainId | Env | RPC |
 |---|---|---|---|
-| `aurelius` | 30001 | real-testnet (Solana testnet) | `aurelius.real-testnet.romeprotocol.xyz` |
-| `augustus` | 200001 | testnet (Solana devnet) | `augustus.testnet.romeprotocol.xyz` |
-| `marcus` | 121301 | devnet (Solana devnet) | `marcus.devnet.romeprotocol.xyz` |
 | `hadrian` | 200010 | testnet (Solana devnet) — first target | `hadrian.testnet.romeprotocol.xyz` |
 
 New chains: duplicate one entry in `hardhat.config.ts` + set `<CHAIN>_PRIVATE_KEY` in the keystore.
@@ -120,7 +117,7 @@ Don't change without re-running the gamut on Hadrian and verifying all 88 contra
 
 **Rome-specific**: nothing in this repo. The cached wrapper (`SPL_ERC20_cached`) lives in `rome-solidity`. Aave V3 composes with it natively except for one operational step:
 
-### ATA warmup (same gotcha as rome-uniswap-v3)
+### ATA warmup
 
 When `Pool.supply(asset, amount, ...)` lands the underlying tokens at the `aToken` address, Pool also reads `IERC20(asset).balanceOf(aToken)` in liquidity-index updates + flashloan accounting. The cached `SPL_ERC20_cached` wrapper reverts on `balanceOf` if the aToken's SPL associated-token-account hasn't been initialized.
 
@@ -132,11 +129,11 @@ Aave's `IERC20(asset).transferFrom(user, aToken, amount)` in supply → cached w
 
 ### Single SPL delegate slot — same UX constraint
 
-SPL Token has one delegate slot per ATA (per Aave V3 spec `2026-05-23-canonical-uniswap-v3-on-rome.md`). User cannot have a pending allowance to both Aave Pool AND Uniswap V3 SwapRouter simultaneously on the same cached wrapper; the second approve overwrites the first. UI implication: re-approve Pool on context switch.
+SPL Token has one delegate slot per ATA. User cannot have a pending allowance to both Aave Pool AND Uniswap V3 SwapRouter simultaneously on the same cached wrapper; the second approve overwrites the first. UI implication: re-approve Pool on context switch.
 
 ### Multi-asset Flash Loan Pattern (Rome-specific)
 
-Canonical Aave V3 flash loan receivers call `IERC20(asset).approve(POOL, amount + premium)` **inside** `executeOperation()`. On Rome that in-callback approve adds the SPL `approve_checked` CPI's accounts (~7-10 unique) to the flash loan tx's per-sig account set. For multi-asset `Pool.flashLoan` with 2+ cached SPL wrappers, that overflow pushes per-sig past Solana's runtime `account_locks` cap (64 on mainnet, 128 on devnet/testnet). Empirical breakpoint: 2 cached wrappers tip the per-sig count from ~60 (works) to ~67+ (fails with `RomeEvmError::TooManyAccounts` → JSON-RPC -32000 from the Proxy).
+Canonical Aave V3 flash loan receivers call `IERC20(asset).approve(POOL, amount + premium)` **inside** `executeOperation()`. On Rome that in-callback approve adds the SPL `approve_checked` CPI's accounts (~7-10 unique) to the flash loan tx's per-sig account set. For multi-asset `Pool.flashLoan` with 2+ cached SPL wrappers, that overflow pushes per-sig past Solana's runtime `account_locks` cap (64; a Solana v1 transaction carries up to 64 accounts). Empirical breakpoint: 2 cached wrappers tip the per-sig count from ~60 (works) to ~67+ (fails with `RomeEvmError::TooManyAccounts` → JSON-RPC -32000 from the Proxy).
 
 **Solution: pre-approve in a separate setup tx.** Use `PreApprovedFlashReceiverBase` (`contracts/test/PreApprovedFlashReceiverBase.sol`) as the canonical base for any Rome flash loan receiver that takes 2+ cached SPL wrappers. The owner calls `init(assets)` once to set Pool's allowance to MaxUint256 on each wrapper. Subsequent `Pool.flashLoan` calls have no in-callback approve, dropping the per-sig set to ~60 — comfortably under the cap.
 
@@ -170,14 +167,19 @@ When wiring a UI or consumer, use the addresses from `deployments/<chain>.json`.
 | Task | Purpose |
 |---|---|
 | `hardhat deploy` | Bring up the full Aave stack: PoolAddressesProvider + ACLManager + IRS + Pool + PoolConfigurator + AToken/VToken impls + AaveOracle + DataProvider. Writes `deployments/<network>.json`. |
-| `hardhat init-reserve` | Wire a single asset: deploy MockAggregator at given USD price → set as oracle source → `initReserves` → enable borrowing → set collateral params → warm ATA on cached wrappers. Idempotent. |
+| `hardhat init-reserve` | Wire a single asset: use `--price-feed <address>` (an existing `latestAnswer()` source, e.g. a BOOK shim) or, with `--price-usd`, deploy a MockAggregator at that USD price → set as oracle source → `initReserves` → enable borrowing → set collateral params → warm ATA on cached wrappers. Idempotent. |
 | `hardhat gamut` | Smoke test: 7-phase supply/borrow/repay/withdraw cycle with per-action Solana metrics (iter sigs, CU, max heap, slot span, wall-clock). |
 | `hardhat gamut-extras` | Self-contained smoke for the three Pool methods `gamut` doesn't cover: `flashLoan` multi-asset (via the pre-approved receiver), `setUserEMode`, `repayWithATokens`. ~3 min. |
 | `hardhat seed-pool` | Supply deployer-held wrapper liquidity into the pool (default 80% of every reserve balance). Unblocks demo borrow flow on a freshly-deployed chain. |
 | `hardhat deploy-flash-receiver` | Deploy + init the `PreApprovedMultiFlashReceiver`. Idempotent — re-runs verify allowances and re-init any that aren't at MaxUint256. |
 | `hardhat setup-emodes` | Configure two demo e-mode categories (Stablecoin + Crypto). |
 | `hardhat deploy-aux` | Deploy `WalletBalanceProvider` + `LiquidationDataProvider` view helpers + register in deployments file. Idempotent. |
-| `hardhat reset-oracle-prices` | Restore oracle sources to canonical mock prices (used after gamut Phase 8 cranks prices). |
+| `hardhat reset-oracle-prices` | Restore oracle sources to canonical mock prices (used after gamut Phase 8 cranks prices). Skips reserves on a BOOK shim. |
+| `hardhat check-registry-drift` | Read-only: diff `deployments/<net>.json` and the live oracle sources against a `rome-registry` checkout. |
+| `scripts/deploy-book-shims.ts` | Deploy one `BookFeedToV2ShimResilient` per reserve (wUSDC, wETH, wSOL, wBTC) from the registry's `*/USD-BOOK` feeds; writes `deployments/hadrian-oracle-shims.json`. Run with `npx hardhat run scripts/<name>.ts --network hadrian`. |
+| `scripts/switch-oracle-to-book.ts` | Point the listed reserves at the shims in one `setAssetSources` call. |
+| `scripts/revert-oracle-to-constants.ts` | Point the listed reserves back at their fixed aggregators. |
+| `scripts/measure-price-cost.ts` | Read-only: `eth_estimateGas` and Solana account count for borrow / withdraw / liquidationCall. |
 
 ## Test selection
 
@@ -188,59 +190,12 @@ When wiring a UI or consumer, use the addresses from `deployments/<chain>.json`.
 | init-reserve task | `hardhat init-reserve` on Hadrian + verify aToken/vToken via `pool.getReserveData` |
 | Network entry added | `npx hardhat compile` then dry-run deploy |
 
-No standalone unit-test suite. Canonical Aave V3 tests live upstream at `@aave-dao/aave-v3-origin`; we don't re-run them. The stress gamut is the smoke test.
+One unit test: `test/book-shim-resilient.test.ts` (`npx hardhat run test/book-shim-resilient.test.ts`) covers the BOOK shim's fallback. Canonical Aave V3 tests live upstream at `@aave-dao/aave-v3-origin`; we don't re-run them. The stress gamut is the smoke test.
 
 ## Hadrian reference deployment
 
-First deploy: **2026-05-25** from `fc4067e`. Deployer `0x1f4946Be340F06c46A50E65084790968aBcc48F6` (cold-wallet).
+The current Hadrian (chain 200010) market is recorded in `deployments/hadrian.json` (core stack, reserves, helpers) and `deployments/hadrian-oracle-shims.json` (the BOOK shims). Both hold public addresses only. The address tables and the oracle design are in [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md). The registry mirror is `chains/200010-hadrian/contracts.json` in [`rome-registry`](https://github.com/rome-protocol/rome-registry).
 
-| Contract | Address |
-|---|---|
-| `Pool` (proxy) | `0x56cD6Bd0FDAd19F44df9D8b9aadD84f964c2fE11` |
-| `Pool` (impl) | `0x8E236Bc7A2090b4383EE5D6522b9FC1843EDAFA8` |
-| `PoolAddressesProvider` | `0xDba99FC11d7383e722F6DEc181F71560b2780f14` |
-| `PoolConfigurator` (proxy) | `0x0C87be51a3676B5B5d9929C99B3F8496ecBB8B03` |
-| `PoolConfigurator` (impl) | `0x2BF8686d3D8183014d4568dA5f10866E11e0C9A1` |
-| `ACLManager` | `0x5E0FDb82A68f3705e93C5384Ccb8ac3e6841bD55` |
-| `AaveOracle` | `0x8A7dcF67BBe2BacF6f9d82E14c16B76df6b9DB11` |
-| `AaveProtocolDataProvider` | `0xE58Ea21dBF3f117cC8e39895E9Dcb843A31441d4` |
-| `DefaultReserveInterestRateStrategyV2` | `0x626b74FF85e629555Ed9F6f595a49f1156E68ffd` |
-| `ATokenImpl` | `0x47b2aB5753A1371e7186d10345Db073301cD9f18` |
-| `VariableDebtTokenImpl` | `0x0e423827fE8Cd752a5A805D89d29F3F451306cF3` |
-| `UiPoolDataProviderV3` | `0x62c3264DBD6c09F98719B83B38fe0084F6dDf907` |
-| `WalletBalanceProvider` | `0x6B40A0cFC0ebd164834C5805C7754746359C7Fd9` |
-| `LiquidationDataProvider` | `0x7d50C8EF7a6aCe3a2c44c7594100BA7D0b292f56` |
-| `PreApprovedMultiFlashReceiver` | `0x263470BE61b18C919bEFE7e1b4bB752BE81bc3AC` (init'd for wUSDC + wETH + wSOL) |
-| `DemoOpenMultiFlashReceiver` | `0x2af94F2C104fD2DfBCFb561238b2F9B0f40eE05A` (init'd for wUSDC + wETH + wSOL) — **DEMO ONLY**, no initiator check |
-
-**IRS** (pool-wide): optimalUsageRatio=8000, baseVariableBorrowRate=0, slope1=400, slope2=7500.
-
-**Listed reserves:**
-
-| Symbol | Underlying | aToken | varDebt | MockAggregator | Price | LTV / Liq / Bonus | Decimals |
-|---|---|---|---|---|---|---|---|
-| wUSDC | `0x9a8B4cB73…0` | `0x16478e47F…b` | `0x0F583d7E0…2` | `0xFA71C835C…C` | $1 | 7500 / 8000 / 10500 | 6 |
-| wETH | `0x55e4502D7…3` | `0x03e07E78B…C` | `0x706ab0384…4` | `0x22B046262…8` | $3000 | 7500 / 8000 / 10500 | 8 |
-| wSOL | `0x8c965F79b…C` | `0x671133B02…1` | `0xA75eA3969…c` | `0x9A51b2ba5…1` | $200 | 6500 / 7000 / 11000 | 9 |
-
-Notes:
-- **wETH is 8 decimals** on Hadrian (Wormhole-bridged ETH on Solana is 8-decimal). UIs consuming this deployment must read `reserve.decimals` from the registry — never assume 18 for ETH.
-- **wSOL collat parameters are tighter** than wUSDC/wETH (LTV 65 / liq threshold 70 / bonus 10%) — wSOL volatility against the USDC base is higher; tunable later via `PoolConfigurator`.
-- **MockAggregator prices are frozen at deploy time.** Mainnet promotion swaps these for `pyth-pull` adapters via `AaveOracle.setAssetSources`.
-- **Treasury / Collector is not deployed** in this slim cut — reserve factor accrues to a placeholder. Add the `treasury/*` module before mainnet promotion.
-
-Post-deploy gamut (24/24 PASS, 2026-05-25):
-
-| Action | Sigs | Sol CU | Heap |
-|---|---:|---:|---:|
-| `Pool.supply` | 1 | ~1.17M | ~200K |
-| `Pool.borrow` | 28–30 | ~7.0M | ~124K |
-| `Pool.repay` | 1 | 1.27M | 208K |
-| `Pool.withdraw` | 1 | 1.23M | 218K |
-| `Pool.setUserUseReserveAsCollateral` | 2 | ~640K | ~141K |
-| **`Pool.liquidationCall`** | **39** | **10.21M** | 136K |
-| `Pool.flashLoanSimple` | 23 | 4.68M | 104K |
-
-All actions within Solana's 1.4M-CU per-sig + 256K-heap limits. liquidationCall is the heaviest single op at 10.21M total CU across 39 iter sigs. Same shape as Marcus (38-sig liquidation, 22-sig flashLoan).
-
-The full deploy artifact is `deployments/hadrian.json`. Registry mirror: `chains/200010-hadrian/contracts.json`.
+- **wETH is 8 decimals** on Hadrian (Wormhole-bridged ETH on Solana is 8-decimal). UIs must read `reserve.decimals` from the registry, never assume 18 for ETH.
+- **wSOL collateral parameters are tighter** than wUSDC/wETH (see `deployments/hadrian.json`).
+- **Treasury / Collector is not deployed** in this slim cut: the reserve factor is 0. Add the `treasury/*` module before any mainnet promotion.

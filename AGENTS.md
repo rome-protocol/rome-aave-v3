@@ -1,17 +1,38 @@
 <!--
-CANONICAL AGENTS.md (v3.5). Ships in every public Rome repo + the create-rome-app
-scaffold. Public-safe: no internal hostnames, infra/platform names, or internal
+CANONICAL AGENTS.md (v3.6) + a repo-specific section ("What this repository is").
+Ships in every public Rome repo + the create-rome-app scaffold. Public-safe: no internal hostnames, infra/platform names, or internal
 repo paths. v3.2: the `rome` CLI + MCP server shipped (rome-protocol/rome-cli) —
 tooling references are now real commands, not futures. v3.3: the Solana lane is
 the SDK's v1 lane (submitRomeTxV1, one Solana v1 transaction per call); new rule:
 grant each SPL wrapper once per wallet; lookup-table advice dropped (Rome sends v1
 transactions). v3.4: the Solana lane's example wallet is Solflare (Phantom does not
 sign Solana v1 transactions on devnet yet). v3.5: gas rule from measurements; who
-signs in the parity pattern; a CLI install that works. Organized by where the builder starts —
+signs in the parity pattern; a CLI install that works. v3.6: Hadrian is
+Rome's public testnet (the only test chain the docs target). Organized by where the builder starts —
 the depth lives in the docs + the example repos it points to.
 Keep it short; an agent reads it before writing a line.
 -->
 # AGENTS.md — building on Rome with an AI coding agent
+
+## What this repository is (read this first)
+
+`rome-aave-v3` is the **contracts and deploy tooling** for Aave V3.6 on Rome, and nothing else. It holds:
+
+- **Contracts** (`contracts/`): the Aave V3.6 protocol, vendored from `@aave-dao/aave-v3-origin@3.6.0` and unchanged, plus a few Rome additions: `misc/BookFeedToV2ShimResilient.sol` (live PriceBook price for `AaveOracle`, with a fixed fallback), and the receivers and mocks under `contracts/test/` (pre-approved and smoke flash-loan receivers, `Faucet`, `MockToken`, `MockBookAdapter`).
+- **Hardhat 3 tasks** (`tasks/`) and **scripts** (`scripts/`): deploy the stack, list reserves, run the smoke gamuts, and manage the oracle sources. Details are in [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md).
+- **Deployment records** (`deployments/hadrian.json`, `deployments/hadrian-oracle-shims.json`): public contract addresses for Hadrian, the testnet (chain 200010).
+- One unit test: `test/book-shim-resilient.test.ts`.
+
+It does **not** contain an app, a UI, or any SDK client code. The web app, and with it both user lanes (MetaMask and a Solana wallet), lives in [rome-aave-v3-demo](https://github.com/rome-protocol/rome-aave-v3-demo). So the rules below that talk about `submitRomeTx` / `submitRomeTxV1` and testing both lanes apply to that app and to anything you build on top of these contracts. The tasks here are operator tooling: a funded deployer key (set in the Hardhat keystore, never in a file or a flag) signs plain `ethers` transactions against the Rome RPC. They are not an app write path. What in this repo touches the Solana side:
+
+- The reserves are SPL wrappers (`SPL_ERC20_cached` / the ERC20SPLFactory wrappers). `init-reserve` calls `ensure_token_account(aToken)` on each wrapper once; the flash-loan receivers are pre-approved once in `init()`, so a multi-asset flash loan carries no in-callback approve (Solana's per-transaction account cap).
+- A wallet must grant each wrapper once (`approve_spl`, rule 4) before its first `supply` or `repay`. That grant is made by the wallet, not by anything in this repo.
+- `tasks/gamut.ts` reads Solana compute and heap per transaction from a Solana RPC (`SOLANA_RPC_URL`, default `https://api.devnet.solana.com`) and resolves reserve wrappers from an endpoint that serves the registry's `/api/chains`, set in `REGISTRY_API_BASE`. This is operator tooling and no public endpoint is named here; the other tasks and scripts do not need it.
+- `scripts/measure-price-cost.ts` is read-only and asks the proxy's `rome_emulateCallAccounts` for the Solana account count of `borrow`, `withdraw` and `liquidationCall`. For the Solana lane, set `MEASURE_USER` to the user's synthetic address and `MEASURE_PAYER` to their Solana wallet.
+
+Chain ids, RPC URLs and wrapper addresses match [`rome-registry`](https://github.com/rome-protocol/rome-registry) (the `hadrian` entry in `hardhat.config.ts` mirrors it); `scripts/deploy-book-shims.ts` reads the PriceBook feed addresses from it with `gh api`.
+
+The rest of this file is the general Rome guide.
 
 **Rome is EVM chains that run natively inside the Solana runtime.** Your Solidity/EVM app executes inside a Solana program and can call Solana programs atomically (CPI). Two lanes reach the same chain and the same state: MetaMask/EVM tooling, and a Solana wallet (Solflare, for example).
 
@@ -52,7 +73,7 @@ Which side holds the core logic is a **soft, per-app judgment** — weigh existi
 For example, performance might tip it: native can be much cheaper than the EVM interpreter for heavy logic (one swap we measured ran ~6× cheaper) — consider it if you have a hot compute-heavy path. It's one input, not a rule.
 
 ## Getting funded — USDC is the gas token; bridge it in
-Every Rome chain's gas token is **USDC** (Circle). **There is no Rome faucet.** Fund a wallet by **bridging USDC into Rome** from a chain where you already have it: get testnet USDC on a source chain (Sepolia, an L2, or Solana) from *that chain's* own faucet, then bridge to Hadrian/Martius (the on-chain `settle_inbound_bridge`, orchestrated by `rome-bridge-api`; CCTP for USDC). One command: `rome fund <chain> --from sepolia --amount 1`. Holding ETH instead? `rome bridge <chain> --from sepolia --amount 0.002 --asset eth` lands it as wETH (Wormhole). Bridging **out** (`--to`) is also one command — note the first outbound needs a one-time `rome activate <chain>` (~2 USDC), and the destination claim is your own step.
+Every Rome chain's gas token is **USDC** (Circle). **There is no Rome faucet.** Fund a wallet by **bridging USDC into Rome** from a chain where you already have it: get testnet USDC on a source chain (Sepolia, an L2, or Solana) from *that chain's* own faucet, then bridge to Hadrian, the testnet (the on-chain `settle_inbound_bridge`, orchestrated by `rome-bridge-api`; CCTP for USDC). One command: `rome fund <chain> --from sepolia --amount 1`. Holding ETH instead? `rome bridge <chain> --from sepolia --amount 0.002 --asset eth` lands it as wETH (Wormhole). Bridging **out** (`--to`) is also one command — note the first outbound needs a one-time `rome activate <chain>` (~2 USDC), and the destination claim is your own step.
 
 ## The rules that bite on every path (different from vanilla EVM)
 
@@ -71,4 +92,4 @@ The TypeScript SDK ([`rome-sdk-ts`](https://github.com/rome-protocol/rome-sdk-ts
 [`rome-cli`](https://github.com/rome-protocol/rome-cli) is the dev CLI + MCP server built for exactly this file's reader (one-shot: `npx github:rome-protocol/rome-cli#v0.11.0 <command>`; durable: clone the repo at a tag (`git clone --branch v0.11.0 https://github.com/rome-protocol/rome-cli`), then `npm install && npm install -g .` — a plain `npm i -g github:…` fails, and an unpinned `npx` can run an old cached copy). **Reads** run on both surfaces, no keys: `facts` (chain/tokens/contracts/gas/balance/programs) · `cookbook` (patterns / cpi-recipe / errors) · `call` · `doctor` · `tx` · `preset` (foundry/hardhat config). Register the MCP server once (after the durable install, so `rome` is on your PATH) — `{"mcpServers": {"rome": {"command": "rome", "args": ["mcp"]}}}` — and the tools are `facts_chain`, `facts_tokens`, `facts_contracts`, `cookbook_patterns`, `cookbook_errors`, `doctor`, `tx`, `preset`, …. **Actions** are CLI-only and key-gated (`ROME_EVM_KEY` from the environment, never a flag, never on MCP): `new` · `deploy` · `send` · `fund` · `bridge` · `activate` · `verify`. The MCP surface can never sign or move funds.
 
 ## Verify before you claim done
-Before saying a change works: check RPC config, confirm every write goes through the SDK (`submitRomeTx` / `submitRomeTxV1`), and run a **both-lane smoke** against devnet with a fresh wallet and a tiny amount. The one-command works-gate is **`rome verify <chain> --path <solidity|solana-program|from-home>`** — dual-lane parity for a contract, an EVM-lane call driving a Solana program via CPI, or the full bridge-in → act → bridge-out round trip. For a scaffolded app, `npm run demo` is the funded dual-lane proof.
+Before saying a change works: check RPC config, confirm every write goes through the SDK (`submitRomeTx` / `submitRomeTxV1`), and run a **both-lane smoke** against the Hadrian testnet with a fresh wallet and a tiny amount. The one-command works-gate is **`rome verify <chain> --path <solidity|solana-program|from-home>`** — dual-lane parity for a contract, an EVM-lane call driving a Solana program via CPI, or the full bridge-in → act → bridge-out round trip. For a scaffolded app, `npm run demo` is the funded dual-lane proof.

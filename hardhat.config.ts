@@ -18,7 +18,7 @@ import deployFlashReceiverTask from "./tasks/deploy-flash-receiver.js";
 import checkRegistryDriftTask from "./tasks/check-registry-drift.js";
 
 // Canonical Aave V3 source from @aave-dao/aave-v3-origin@3.6.0 (slim first-cut)
-// vendored into contracts/. Same architectural principle as rome-uniswap-v3:
+// vendored into contracts/. Architectural principle:
 // modify the token (SPL_ERC20_cached), keep the lending protocol canonical.
 //
 // Compiler settings match Aave's foundry.toml: solc 0.8.27, optimizer.runs=200,
@@ -41,30 +41,6 @@ export default defineConfig({
     overrides: {},
   },
   networks: {
-    aurelius: {
-      type: "http",
-      chainType: "l1",
-      chainId: 30001,
-      url: "https://aurelius.real-testnet.romeprotocol.xyz/",
-      accounts: [configVariable("AURELIUS_PRIVATE_KEY")],
-    },
-
-    augustus: {
-      type: "http",
-      chainType: "l1",
-      chainId: 200001,
-      url: "https://augustus.testnet.romeprotocol.xyz/",
-      accounts: [configVariable("AUGUSTUS_PRIVATE_KEY")],
-    },
-
-    marcus: {
-      type: "http",
-      chainType: "l1",
-      chainId: 121301,
-      url: "https://marcus.devnet.romeprotocol.xyz/",
-      accounts: [configVariable("MARCUS_PRIVATE_KEY")],
-    },
-
     hadrian: {
       type: "http",
       chainType: "l1",

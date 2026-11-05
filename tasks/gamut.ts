@@ -7,7 +7,7 @@ import { task } from "hardhat/config";
 // Exercises the supply / borrow / repay / withdraw / liquidation surface
 // against two reserves. Captures per-action Solana metrics (iter sigs,
 // CU, max heap, slot span) via rome_solanaTxForEvmTx + Rome's Cherry
-// follower — same pattern as rome-uniswap-v3 gamut.
+// follower.
 //
 // Coverage:
 //   1. supply(collateralAsset, collateralAmount) → mint aToken
@@ -22,7 +22,7 @@ import { task } from "hardhat/config";
 // always tests the wrappers that are live, never a stale local copy. aToken/vToken
 // are read on-chain via Pool.getReserveData; the Aave stack addresses still come
 // from deployments/<network>.json. Reserves must be pre-initialized via
-// `hardhat init-reserve`. Set REGISTRY_API_BASE to override the registry host.
+// `hardhat init-reserve`. Set REGISTRY_API_BASE to the registry host (there is no default).
 
 const RATE_VARIABLE = 2;
 
@@ -55,13 +55,14 @@ export default task("gamut", "Stress gamut: Aave V3 × SPL_ERC20_cached wrappers
     // --- Resolve reserves from the live registry, not the local deployments file ---
     // The wrapper (asset) address + decimals come from the registry API's /api/chains — the
     // same source the app reads — so the gamut tracks whatever wrappers are live.
-    // (Hadrian migrated every SPL wrapper to a new #240 set; a stale local copy
+    // (Hadrian migrated every SPL wrapper to a new wrapper set; a stale local copy
     // would silently test dead contracts — which is exactly what hid prior runs.)
     // aToken/vToken are read on-chain from the Pool. Only the Aave stack addresses
-    // stay local (deploy artifacts, not in the registry). REGISTRY_API_BASE overrides.
+    // stay local (deploy artifacts, not in the registry). Set REGISTRY_API_BASE.
     const apiBase = (process.env.REGISTRY_API_BASE || "").replace(/\/$/, "");
     if (!apiBase) throw new Error("Set REGISTRY_API_BASE to your registry API endpoint (the /api/chains host).");
-    const chainId = Number((hre.network as any).config?.chainId);
+    // Hardhat 3: the network config lives on the connection, not on hre.network.
+    const chainId = Number((await ethers.provider.getNetwork()).chainId);
     // Test-baseline USD price per canonical asset. The registry carries assetRef but
     // no price; the gamut deterministically resets + 10x-cranks the oracle off this
     // baseline, so it must be stable across runs — never a live feed.
@@ -150,7 +151,8 @@ export default task("gamut", "Stress gamut: Aave V3 × SPL_ERC20_cached wrappers
         if (delay > 0) await sleep(delay);
         const tx: any = await rpc(SOLANA_RPC, "getTransaction", [
           sig,
-          { maxSupportedTransactionVersion: 0, encoding: "json" },
+          // Rome EVM legs are SIMD-0385 v1 since 2026-09; v0 here makes the RPC refuse and CU reads as 0.
+          { maxSupportedTransactionVersion: 1, encoding: "json" },
         ]);
         if (tx) return tx;
       }

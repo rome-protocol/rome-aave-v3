@@ -7,7 +7,7 @@ import { task } from "hardhat/config";
 // with the faucet at a 100-unit drop.
 //
 // Writes the addresses to deployments/<network>.json under "_faucet" and
-// "_mockTokens" so /publish-registry-pr (and the demo) can pick them up.
+// "_mockTokens" so they can be published to the registry (and the demo can pick them up).
 //
 // After this lands, the operator runs `hardhat init-reserve` for each
 // mock so they show up in the Aave demo's Markets list.

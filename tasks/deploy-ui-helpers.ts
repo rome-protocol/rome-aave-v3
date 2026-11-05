@@ -21,7 +21,7 @@ import { task } from "hardhat/config";
 //     (returns 1e8 = USD/USD = 1.0, matching AaveOracle.BASE_CURRENCY_UNIT)
 //
 // Appends `UiPoolDataProviderV3.address` to deployments/<network>.json so
-// `/publish-registry-pr` can pick it up for the apps/aave/<chainId>-<slug>.json
+// it can be published to the registry for the apps/aave/<chainId>-<slug>.json
 // follow-up entry.
 
 export default task("deploy-ui-helpers", "Deploy UiPoolDataProviderV3 (and optionally WalletBalanceProvider)")

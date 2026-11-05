@@ -35,6 +35,13 @@ export default task("reset-oracle-prices", "Restore oracle sources to canonical 
     const assets: string[] = [];
     const sources: string[] = [];
 
+    // Reserves already on a BOOK shim (deployments/<net>-oracle-shims.json) stay on it.
+    const shimsPath = path.join("deployments", `${networkSlug}-oracle-shims.json`);
+    const shimOf: Record<string, string> = {};
+    if (fs.existsSync(shimsPath)) {
+      for (const s of Object.values(JSON.parse(fs.readFileSync(shimsPath, "utf8")).shims ?? {}) as any[]) shimOf[s.asset.toLowerCase()] = s.shim.toLowerCase();
+    }
+
     for (const [sym, r] of Object.entries(reserves)) {
       const reserve = r as any;
       const priceUsd = reserve.priceUsd;
@@ -44,6 +51,10 @@ export default task("reset-oracle-prices", "Restore oracle sources to canonical 
       }
       const priceScaled = BigInt(Math.round(parseFloat(String(priceUsd)) * 1e8));
       const currentSource: string = await oracle.getSourceOfAsset(reserve.asset);
+      if (shimOf[reserve.asset.toLowerCase()] === currentSource.toLowerCase()) {
+        console.log(`  ${sym}: on BOOK shim ${currentSource} - skipped (run switch-oracle-to-book.ts / revert-oracle-to-constants.ts to change it)`);
+        continue;
+      }
       const currentValue: bigint = await (await ethers.getContractAt("MockAggregator", currentSource)).latestAnswer();
 
       if (currentValue === priceScaled) {

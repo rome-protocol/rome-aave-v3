@@ -158,7 +158,7 @@ export default task("check-registry-drift", "Compare deployments/<net>.json + li
       console.log(`✓ No confirmed drift: deployments + live chain match the registry for ${idSlug}.`);
       return;
     }
-    console.log(`✗ ${drifts.length} confirmed drift(s) for ${idSlug} — reconcile via /publish-registry-pr.`);
+    console.log(`✗ ${drifts.length} confirmed drift(s) for ${idSlug} — reconcile with a pull request on rome-protocol/rome-registry.`);
     console.log("  Note: oracle.json + the OG-V2 entries in contracts.json are auto-PR'd from rome-solidity;");
     console.log("  fix oracle-source drift there or in apps/aave — never hand-edit oracle.json.");
     throw new Error(`Registry drift: ${drifts.length} confirmed mismatch(es) for ${idSlug} (see report above)`);

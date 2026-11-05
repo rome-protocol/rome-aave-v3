@@ -14,21 +14,40 @@ market composes natively with Solana liquidity.
 
 The Aave V3 protocol contracts are vendored under `contracts/` byte-identical to
 upstream — each file keeps its upstream SPDX license header. Rome's additions are
-the Hardhat configuration, the deploy/gamut tasks under `tasks/`, and the
-cached-wrapper test receivers under `contracts/test/`.
+the Hardhat configuration, the deploy/gamut tasks under `tasks/`, the oracle
+scripts under `scripts/`, the price shim `contracts/misc/BookFeedToV2ShimResilient.sol`,
+the receivers and mocks under `contracts/test/`, and the unit test under `test/`.
+
+## What is in this repo
+
+- **Contracts**: Aave V3.6 (slim cut) plus `BookFeedToV2ShimResilient`, which gives
+  `AaveOracle` the live Rome PriceBook price and falls back to a fixed price when the
+  book is stale.
+- **Tasks and scripts**: deploy the stack, list reserves (`init-reserve`, with
+  `--price-feed` to use a shim as the price source), smoke gamuts, and the oracle
+  scripts (`deploy-book-shims`, `switch-oracle-to-book`, `revert-oracle-to-constants`,
+  `measure-price-cost`).
+- **Deployment records**: `deployments/hadrian.json` and
+  `deployments/hadrian-oracle-shims.json` (public addresses on Hadrian, chain 200010).
+- **Docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) covers the protocol,
+  deploy, oracle, flash-loan pattern and day-2 operations.
+
+The web app that sits on these contracts is a separate repo:
+[`rome-aave-v3-demo`](https://github.com/rome-protocol/rome-aave-v3-demo).
 
 ## Build
 
 ```bash
-yarn install
+yarn install --frozen-lockfile
 yarn hardhat compile
 ```
 
 ## License
 
-Rome-authored scaffolding is MIT; the vendored Aave V3 code retains its upstream
-licenses (BUSL-1.1 / MIT / LGPL-3.0) per each file's SPDX header. See
-[LICENSE](./LICENSE) and
+Rome-authored code (the Hardhat configuration, `tasks/`, `scripts/`, `test/`, the
+price shim and `contracts/test/`) is under Rome Protocol's licence (personal, non-commercial use; see [LICENSE](./LICENSE)).
+The vendored Aave V3 code retains its upstream licenses (BUSL-1.1 / MIT / LGPL-3.0)
+per each file's SPDX header. See
 [aave-dao/aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) for the
 Business Source License parameters.
 

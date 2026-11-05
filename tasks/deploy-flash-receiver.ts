@@ -24,10 +24,10 @@ import { task } from "hardhat/config";
 // allowlist hard-fails. Add a new Rome testnet/demo chainId here when standing
 // up its public demo — NEVER add a mainnet chainId.
 const DEMO_RECEIVER_TESTNET_CHAIN_IDS = new Set<number>([
-  30001, // aurelius (Rome real-testnet / Solana testnet)
-  200001, // augustus (Rome testnet / Solana devnet)
-  121301, // marcus   (Rome devnet / Solana devnet)
-  200010, // hadrian  (Rome testnet / Solana devnet)
+  30001, // Rome testnet (Solana testnet)
+  200001, // Rome testnet (Solana devnet)
+  121301, // Rome devnet (Solana devnet)
+  200010, // hadrian (Rome testnet / Solana devnet)
 ]);
 
 export default task("deploy-flash-receiver", "Deploy + init the pre-approved multi-asset flash loan receiver")
