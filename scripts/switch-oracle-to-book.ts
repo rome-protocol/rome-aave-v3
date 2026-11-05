@@ -1,14 +1,18 @@
-// Point AaveOracle at the resilient BOOK shims in deployments/hadrian-oracle-shims.json with ONE
-// setAssetSources call, for the reserves that are listed in the pool today (wBTC joins once listed).
-// Prints getAssetPrice before and after. Reversible: scripts/revert-oracle-to-constants.ts.
-//   npx hardhat run scripts/switch-oracle-to-book.ts --network hadrian
+// Point AaveOracle at the BOOK price shims with ONE setAssetSources call, for the reserves that are listed
+// in the pool today (wBTC joins once listed). Prints getAssetPrice before and after.
+//   ORACLE_SHIMS=book (default)  deployments/hadrian-oracle-shims.json       BookFeedToV2ShimResilient (via the adapter)
+//   ORACLE_SHIMS=lean            deployments/hadrian-oracle-lean-shims.json  PriceBookEntryShim (reads the PriceBook directly)
+// Switch to lean and back to the adapter shims by running it with the other value; to go back to the constant
+// aggregators use scripts/revert-oracle-to-constants.ts.
+//   ORACLE_SHIMS=lean npx hardhat run scripts/switch-oracle-to-book.ts --network hadrian
 import hre from "hardhat";
-import { loadDeployments, loadShims, listedSymbols, printPrices } from "./lib/oracle-common.js";
+import { loadDeployments, loadSwitchTargets, listedSymbols, printPrices } from "./lib/oracle-common.js";
 
 async function main() {
   const { ethers } = await hre.network.connect();
   const [signer] = await ethers.getSigners();
-  const dep = loadDeployments(); const shims = loadShims();
+  const dep = loadDeployments(); const shims = loadSwitchTargets();
+  console.log(`shim record: ${process.env.ORACLE_SHIMS ?? "book"}`);
   const oracle = await ethers.getContractAt("AaveOracle", dep.AaveOracle.address);
   const pool = await ethers.getContractAt("Pool", dep.Pool.address);
   const assets = Object.fromEntries(Object.entries(shims).map(([s, e]) => [s, e.asset]));

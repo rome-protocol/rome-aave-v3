@@ -8,6 +8,7 @@ import { task } from "hardhat/config";
 //   2. AaveOracle.setAssetSources([asset], [aggregator])
 //   3. PoolConfigurator.initReserves([{...input}]) — clones AToken + VToken
 //      via the implementations + calls initialize on each
+//   3b. optional --supply-cap / --borrow-cap (whole tokens), applied right after initReserves
 //   4. PoolConfigurator.setReserveBorrowing(asset, true)
 //   5. PoolConfigurator.configureReserveAsCollateral(asset, ltv, liqThreshold, liqBonus)
 //   6. ATA warmup: ensure_token_account(aToken) on the cached wrapper
@@ -27,15 +28,20 @@ export default task("init-reserve", "Initialize a single Aave reserve (asset lis
   .addOption({ name: "decimals", description: "Decimals of the underlying asset", defaultValue: "" })
   .addOption({ name: "priceUsd", description: "USD price for a new MockAggregator (e.g., 1.0 for stablecoins). Not needed with --price-feed.", defaultValue: "" })
   .addOption({ name: "priceFeed", description: "Existing price source (V2 latestAnswer(), 8 dec) to use instead of deploying a MockAggregator", defaultValue: "" })
+  .addOption({ name: "supplyCap", description: "Supply cap in WHOLE tokens, set right after initReserves (0/empty = leave uncapped).", defaultValue: "" })
+  .addOption({ name: "borrowCap", description: "Borrow cap in WHOLE tokens, set right after initReserves (0/empty = leave uncapped).", defaultValue: "" })
   .addOption({ name: "ltv", description: "Loan-to-value (bps). Default 7500 (75%).", defaultValue: "7500" })
   .addOption({ name: "liquidationThreshold", description: "Liquidation threshold (bps). Default 8000 (80%).", defaultValue: "8000" })
   .addOption({ name: "liquidationBonus", description: "Liquidation bonus (bps over 10000). Default 10500 (5% bonus).", defaultValue: "10500" })
-  .setInlineAction(async ({ asset, symbol, decimals, priceUsd, priceFeed, ltv, liquidationThreshold, liquidationBonus }, hre) => {
+  .setInlineAction(async ({ asset, symbol, decimals, priceUsd, priceFeed, supplyCap, borrowCap, ltv, liquidationThreshold, liquidationBonus }, hre) => {
     const { ethers, networkName } = await hre.network.connect();
     const [signer] = await ethers.getSigners();
 
     if (!asset || !symbol || !decimals || (!priceUsd && !priceFeed)) {
       throw new Error("--asset, --symbol, --decimals, and one of --price-feed or --price-usd are required");
+    }
+    for (const [label, v] of [["supply-cap", supplyCap], ["borrow-cap", borrowCap]]) {
+      if (v && !/^\d+$/.test(String(v))) throw new Error(`--${label} must be a whole number of tokens: ${v}`);
     }
     if (priceFeed && !ethers.isAddress(priceFeed)) throw new Error(`--price-feed is not an address: ${priceFeed}`);
 
@@ -125,6 +131,15 @@ export default task("init-reserve", "Initialize a single Aave reserve (asset lis
     const vTokenAddr: string = data.variableDebtTokenAddress;
     console.log(`  aToken: ${aTokenAddr}`);
     console.log(`  vToken: ${vTokenAddr}`);
+
+    // 3b. Caps first, before anything can use the reserve (whole tokens). A reserve is uncapped until this runs.
+    for (const [label, v, fn] of [["supplyCap", supplyCap, "setSupplyCap"], ["borrowCap", borrowCap, "setBorrowCap"]] as const) {
+      if (!v) continue;
+      if (!/^\d+$/.test(String(v))) throw new Error(`--${label} must be a whole number of tokens: ${v}`);
+      tx = await (config as any)[fn](asset, BigInt(String(v)));
+      await tx.wait();
+      console.log(`  ${fn}(${v}): PASS`);
+    }
 
     // 4. Enable borrowing + flash loans
     tx = await config.setReserveBorrowing(asset, true);

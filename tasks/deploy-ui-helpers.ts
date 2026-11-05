@@ -21,10 +21,9 @@ import { task } from "hardhat/config";
 //     (returns 1e8 = USD/USD = 1.0, matching AaveOracle.BASE_CURRENCY_UNIT)
 //
 // Appends `UiPoolDataProviderV3.address` to deployments/<network>.json so
-// it can be published to the registry for the apps/aave/<chainId>-<slug>.json
-// follow-up entry.
+// the app entry for this chain can pick it up.
 
-export default task("deploy-ui-helpers", "Deploy UiPoolDataProviderV3 (and optionally WalletBalanceProvider)")
+export default task("deploy-ui-helpers", "Deploy UiPoolDataProviderV3 (WalletBalanceProvider comes from deploy-aux)")
   .addOption({
     name: "networkBaseAggregator",
     description: "Address of the AggregatorInterface for the network's base token price in USD. Default = the wETH MockAggregator from deployments/<network>.json#_reserves.wETH.mockAggregator.",

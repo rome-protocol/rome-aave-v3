@@ -4,7 +4,7 @@ pragma solidity ^0.8.27;
 import {MockToken} from "./MockToken.sol";
 
 /**
- * One-shot test-asset faucet for the Aave-on-Rome demo's /faucet page.
+ * One-shot test-asset faucet: native gas plus a drop of each registered MockToken.
  *
  * On `claim()`:
  *   1. Sends `gasDrop` native gas to msg.sender (one-time per user)
@@ -14,8 +14,9 @@ import {MockToken} from "./MockToken.sol";
  * fresh wallet receives everything it needs to test supply/borrow flows in
  * one click.
  *
- * Deployer is the owner of every MockToken and the faucet. Deployer
- * pre-funds the faucet with native gas at construction.
+ * The faucet is the only minter of every MockToken (set at deploy, see
+ * tasks/deploy-faucet.ts). The deployer pre-funds the faucet with native
+ * gas at construction.
  */
 contract Faucet {
   address public immutable owner;

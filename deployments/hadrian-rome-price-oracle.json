@@ -1,0 +1,37 @@
+{
+  "deployedAt": "2026-11-05T20:10:58.887Z",
+  "deployer": "0x1f4946Be340F06c46A50E65084790968aBcc48F6",
+  "oracle": "0x3ca9343F21661c1F854860532deeC2734bcD869B",
+  "book": "0xac3d80043ead56fcf94db4574a69ee0975f7a63f",
+  "assets": {
+    "wUSDC": {
+      "asset": "0xbce339ba4c3a8de3bb8af1c5539e6ac11da3112d",
+      "sourceAccount": "0xbe939a8309f56407187fff30ac54b169498be99f6d8e1bfd4244680cd4f7d1e2",
+      "maxStaleness": 3600,
+      "fallbackPrice": "99975700",
+      "priceAtDeploy": "99975700"
+    },
+    "wETH": {
+      "asset": "0x02aeace038269f9961c93d04dcacd6fb3adfa55f",
+      "sourceAccount": "0x2cfad277afcaa867c7d7fe26e0d51dc899101335879ab63c2aa84876317135bb",
+      "maxStaleness": 3600,
+      "fallbackPrice": "225842046761",
+      "priceAtDeploy": "225842046761"
+    },
+    "wSOL": {
+      "asset": "0x39f36444fcb79b3e691544aee2a832ebef54ca9f",
+      "sourceAccount": "0x60314704340deddf371fd42472148f248e9d1a6d1a5eb2ac3acd8b7fd5d6b243",
+      "maxStaleness": 3600,
+      "fallbackPrice": "8998819890",
+      "priceAtDeploy": "8998819890"
+    },
+    "wBTC": {
+      "asset": "0x94834153ea70219d44edfe295697ff0c204ec68c",
+      "sourceAccount": "0x35a70c11162fbf5a0e7f7d2f96e19f97b02246a15687ee672794897448e658de",
+      "maxStaleness": 3600,
+      "fallbackPrice": "7626611973662",
+      "priceAtDeploy": "7626611973662"
+    }
+  },
+  "previousOracle": "0x4736549aB02e6c6b7083b7625464368E203287E4"
+}

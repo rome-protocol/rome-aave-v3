@@ -2,13 +2,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { task } from "hardhat/config";
 
-// Smoke for the three Pool methods that the main `gamut` task doesn't cover:
+// Smoke for the three Pool methods:
 //
 //   A. Pool.flashLoan (multi-asset entrypoint)
 //   B. Pool.setUserEMode + Pool.getUserEMode (user-side opt-in)
 //   C. Pool.repayWithATokens (burn aTokens to clear same-asset debt)
 //
-// Self-contained: doesn't depend on prior gamut state, doesn't crank oracle,
+// Self-contained: doesn't depend on prior pool state, doesn't crank oracle,
 // doesn't liquidate. Picks two reserves via --collateral-symbol / --borrow-symbol
 // (defaults wUSDC + wETH on Hadrian).
 

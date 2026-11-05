@@ -15,19 +15,3 @@ For inquiries regarding commercial use, please contact us at: https://forms.gle/
 
 
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
----
-
-This LICENSE applies to the repository scaffolding and Rome-authored code only
-(the Hardhat configuration, the deploy/gamut tasks under `tasks/`, the scripts
-under `scripts/`, the unit test under `test/`, the price shim
-`contracts/misc/BookFeedToV2ShimResilient.sol`, and the receivers and mocks under
-`contracts/test/`). The vendored Aave V3 protocol code — a slim
-first-cut of aave-dao/aave-v3-origin@3.6.0 — retains its upstream per-file
-licenses, as marked by each file's `SPDX-License-Identifier` header: the protocol
-core is under the Business Source License 1.1 (BUSL-1.1), the interfaces and
-periphery under MIT, and the vendored Gnosis `GPv2SafeERC20` under
-LGPL-3.0-or-later. See https://github.com/aave-dao/aave-v3-origin for the
-upstream sources and for the full text and parameters (Licensor, Change Date,
-and Additional Use Grant) of the Business Source License 1.1 that governs the
-BUSL-1.1 files.

@@ -5,7 +5,7 @@ import {IFlashLoanSimpleReceiver} from "../misc/flashloan/interfaces/IFlashLoanS
 import {IPool} from "../interfaces/IPool.sol";
 import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
 
-// Minimal flash loan receiver for the rome-aave-v3 gamut.
+// Minimal standalone flashLoanSimple receiver example.
 // `executeOperation` approves the Pool to pull (amount + premium) back —
 // the contract MUST hold (amount + premium) of `asset` at that point.
 // The deployer funds the receiver with the premium ahead of the flashLoanSimple

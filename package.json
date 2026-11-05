@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Canonical Aave V3 on Rome Protocol — slim first-cut from @aave-dao/aave-v3-origin@3.6.0, deployed against SPL_ERC20_cached wrappers.",
+  "description": "Canonical Aave V3 on Rome Protocol — slim cut of @aave-dao/aave-v3-origin (main at commit 1e3d70c, after the v3.6.0 release), deployed against SPL_ERC20_cached wrappers.",
   "scripts": {
     "compile": "hardhat compile",
     "postinstall": "ln -sfn . node_modules/openzeppelin-contracts/contracts"

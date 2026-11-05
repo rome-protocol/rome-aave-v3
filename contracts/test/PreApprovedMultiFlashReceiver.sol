@@ -6,8 +6,7 @@ import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
 
 /// @notice Concrete pre-approved multi-asset flash loan receiver.
 /// @dev No-op body — emits an event for traceability and returns true. Used by
-/// the rome-aave-v3-demo to showcase multi-asset Pool.flashLoan on Rome and
-/// by `gamut-extras` Phase A as a passing smoke. Apps that want to do real
+/// `gamut-extras` Phase A as a passing multi-asset Pool.flashLoan smoke. Apps that want to do real
 /// work (arb, refinance, swap) should write their own inheriting contract
 /// with logic in `_executeOperation`.
 ///

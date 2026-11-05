@@ -84,6 +84,19 @@
       "liquidationBonus": 10500,
       "decimals": 9,
       "initializedAt": "2026-09-18T23:36:42.542Z"
+    },
+    "wBTC": {
+      "asset": "0x94834153ea70219d44edfe295697ff0c204ec68c",
+      "aToken": "0xEEc1D1335F5ca2BabEfbf98D10c2145147E42Db2",
+      "vToken": "0x67034C739c5dD5d26AF5279B8F50B6cD87e447A4",
+      "priceFeed": "0x2b7fE04fa357feC3837eE241fDc9Cea2Eb9470DB",
+      "ltv": 7000,
+      "liquidationThreshold": 7500,
+      "liquidationBonus": 10500,
+      "decimals": 9,
+      "initializedAt": "2026-11-05T20:25:40.086Z",
+      "supplyCap": 50,
+      "borrowCap": 20
     }
   },
   "UiPoolDataProviderV3": {

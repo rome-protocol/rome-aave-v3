@@ -1,7 +1,6 @@
 {
   "deployedAt": "2026-11-05T10:13:50.118Z",
   "deployer": "0x1f4946Be340F06c46A50E65084790968aBcc48F6",
-  "source": "rome-protocol/rome-registry chains/200010-hadrian/oracle.json",
   "shims": {
     "wUSDC": {
       "asset": "0xbce339ba4c3a8de3bb8af1c5539e6ac11da3112d",

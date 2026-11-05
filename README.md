@@ -2,54 +2,35 @@
 
 > **Built on [Rome Protocol](https://docs.rome.builders)** — EVM chains that run natively inside the Solana runtime, where Solidity apps call Solana programs atomically (CPI) and Solana users drive EVM apps: two VMs, one chain, one block.
 
-
 - **Single state** — EVM contracts and Solana programs share one state; no bridging or sync delay.
 - **Atomic CPI access** — Solidity calls any Solana program directly (SPL Token, Meteora, …) inside one atomic transaction.
 - **App Sovereignty** — each app runs its own EVM chain with a custom gas token and captures its own fee revenue.
 
-Canonical Aave V3 on Rome Protocol — a slim first-cut of
-[aave-dao/aave-v3-origin@3.6.0](https://github.com/aave-dao/aave-v3-origin),
-deployed against Rome's `SPL_ERC20_cached` SPL-token wrappers so an EVM lending
-market composes natively with Solana liquidity.
+Aave V3.6 on Rome: a slim cut of [aave-dao/aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) (the contracts are vendored unmodified from main at commit 1e3d70c, February 2026, after the v3.6.0 release; four files are from the v3.6.0 tag, see `NOTICE`), deployed against Rome's `SPL_ERC20_cached` SPL-token wrappers so an EVM lending market composes natively with Solana liquidity. It is live on Hadrian, Rome's public testnet (chain 200010): four reserves (wUSDC, wETH, wSOL, wBTC).
 
-The Aave V3 protocol contracts are vendored under `contracts/` byte-identical to
-upstream — each file keeps its upstream SPDX license header. Rome's additions are
-the Hardhat configuration, the deploy/gamut tasks under `tasks/`, the oracle
-scripts under `scripts/`, the price shim `contracts/misc/BookFeedToV2ShimResilient.sol`,
-the receivers and mocks under `contracts/test/`, and the unit test under `test/`.
+The Aave V3 protocol contracts are vendored under `contracts/`, each file keeping its upstream SPDX license header. Rome's additions:
 
-## What is in this repo
+- `contracts/misc/RomePriceOracle.sol`: the pool's price oracle. It reads Rome's PriceBook entries directly and answers a fixed fallback price when an entry is stale or missing, so a stalled book never reverts the market. `PriceBookEntryShim.sol` and `BookFeedToV2ShimResilient.sol` are the price sources used with `AaveOracle`, the previous oracle.
+- `contracts/test/`: the pre-approved flash-loan receivers, a faucet and test tokens, and price-book test doubles.
+- `tasks/` and `scripts/`: the Hardhat tasks that deploy and list the market, and the oracle, reserve-cap and wBTC tools.
+- `test/`: three unit tests for the oracle contracts.
+- `deployments/`: the addresses of the Hadrian market and its oracle records.
 
-- **Contracts**: Aave V3.6 (slim cut) plus `BookFeedToV2ShimResilient`, which gives
-  `AaveOracle` the live Rome PriceBook price and falls back to a fixed price when the
-  book is stale.
-- **Tasks and scripts**: deploy the stack, list reserves (`init-reserve`, with
-  `--price-feed` to use a shim as the price source), smoke gamuts, and the oracle
-  scripts (`deploy-book-shims`, `switch-oracle-to-book`, `revert-oracle-to-constants`,
-  `measure-price-cost`).
-- **Deployment records**: `deployments/hadrian.json` and
-  `deployments/hadrian-oracle-shims.json` (public addresses on Hadrian, chain 200010).
-- **Docs**: [`docs/AAVE-V3-ON-ROME.md`](docs/AAVE-V3-ON-ROME.md) covers the protocol,
-  deploy, oracle, flash-loan pattern and day-2 operations.
-
-The web app that sits on these contracts is a separate repo:
-[`rome-aave-v3-demo`](https://github.com/rome-protocol/rome-aave-v3-demo).
+Start with [`docs/AAVE-V3-ON-ROME.md`](./docs/AAVE-V3-ON-ROME.md): what runs, the live addresses, how to deploy, the oracle, and the flash-loan pattern.
 
 ## Build
 
 ```bash
 yarn install --frozen-lockfile
-yarn hardhat compile
+npx hardhat compile
 ```
+
+Tests run as scripts, for example `npx hardhat run test/rome-price-oracle.test.ts`.
 
 ## License
 
-Rome-authored code (the Hardhat configuration, `tasks/`, `scripts/`, `test/`, the
-price shim and `contracts/test/`) is under Rome Protocol's licence (personal, non-commercial use; see [LICENSE](./LICENSE)).
-The vendored Aave V3 code retains its upstream licenses (BUSL-1.1 / MIT / LGPL-3.0)
-per each file's SPDX header. See
-[aave-dao/aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) for the
-Business Source License parameters.
+Rome's own code is under the Rome Protocol license, in [LICENSE](./LICENSE): personal, non-commercial use, and commercial use by written permission. The vendored third-party code keeps its own licenses, per each file's `SPDX-License-Identifier` header: the Aave V3 core is BUSL-1.1, other Aave files and the OpenZeppelin and Chainlink code are MIT, the Gnosis `GPv2SafeERC20` is LGPL-3.0-or-later, and WETH9 is GPL-3.0-or-later (licence notice in its header). [NOTICE](./NOTICE) lists them, and the license texts are in [`LICENSES/`](./LICENSES). The BUSL-1.1 terms, including the Additional Use Grant and the Change Date, are Aave DAO's, in `LICENSES/BUSL-1.1-aave-v3-origin`.
 
 ## Building on Rome with an agent
+
 See [`AGENTS.md`](./AGENTS.md) — the Rome-specific rules a coding agent needs.
