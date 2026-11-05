@@ -15,8 +15,8 @@ import { task } from "hardhat/config";
 // On Rome that in-callback approve pushes the per-sig account count past the
 // cached-wrapper composition limit for 2+ cached SPL wrappers. The pre-approve
 // pattern moves the approve into a separate setup tx so the flash loan tx
-// stays under the limit. See `CLAUDE.md § Multi-asset Flash Loan Pattern`
-// and `PreApprovedFlashReceiverBase.sol`.
+// stays under the limit. See docs/AAVE-V3-ON-ROME.md (section
+// "Flash loans") and `PreApprovedFlashReceiverBase.sol`.
 
 // DemoOpenMultiFlashReceiver has NO initiator check — anyone can call
 // Pool.flashLoan against it. It must only ever exist on a Rome testnet/demo
@@ -24,10 +24,7 @@ import { task } from "hardhat/config";
 // allowlist hard-fails. Add a new Rome testnet/demo chainId here when standing
 // up its public demo — NEVER add a mainnet chainId.
 const DEMO_RECEIVER_TESTNET_CHAIN_IDS = new Set<number>([
-  30001, // aurelius (Rome real-testnet / Solana testnet)
-  200001, // augustus (Rome testnet / Solana devnet)
-  121301, // marcus   (Rome devnet / Solana devnet)
-  200010, // hadrian  (Rome testnet / Solana devnet)
+  200010, // hadrian (Rome testnet / Solana devnet)
 ]);
 
 export default task("deploy-flash-receiver", "Deploy + init the pre-approved multi-asset flash loan receiver")

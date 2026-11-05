@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { task } from "hardhat/config";
 
-// Deploys the "auxiliary view helpers" added in the slim→full PR:
+// Deploys two auxiliary view helpers:
 //   - WalletBalanceProvider: batch ERC-20 + native balance reads. Lets UIs
 //     fetch all balances for a user in one call rather than per-asset.
 //   - LiquidationDataProvider: liquidation params view helper. Returns

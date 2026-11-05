@@ -1,0 +1,122 @@
+{
+  "PoolAddressesProvider": {
+    "address": "0x8f40D56ffAA473120177c65FC5EE431b22353CD4",
+    "deployedAt": "2026-09-18T23:30:55.786Z",
+    "marketId": "Rome Aave V3 Market"
+  },
+  "ACLManager": {
+    "address": "0x15Ef778f6399Ae984cc2A816afE76e30bd9e14D0",
+    "deployedAt": "2026-09-18T23:30:55.786Z"
+  },
+  "DefaultReserveInterestRateStrategyV2": {
+    "address": "0xb0a1f16C6a4254bf41BD6c972A0ABC223ba61297",
+    "deployedAt": "2026-09-18T23:30:55.786Z"
+  },
+  "Pool": {
+    "address": "0x81e7e7e4cBC2b5a55C2dE1d3dFCf87C0cF867520",
+    "deployedAt": "2026-09-18T23:30:55.786Z",
+    "impl": "0xD262194e4f09294B355740C098525D2C275E6D70"
+  },
+  "PoolConfigurator": {
+    "address": "0x1186549d0E2308579337ff064B2C5865F416d01F",
+    "deployedAt": "2026-09-18T23:30:55.786Z",
+    "impl": "0x7E39bCf66F31f952aC4A7537826fa8cB548d3EC3"
+  },
+  "ATokenImpl": {
+    "address": "0x435D91287d33EFEC538959395742Bd2F1f7Df071",
+    "deployedAt": "2026-09-18T23:30:55.786Z"
+  },
+  "VariableDebtTokenImpl": {
+    "address": "0xa2A4480AbE0744034b708386ab716d2E92CA88B5",
+    "deployedAt": "2026-09-18T23:30:55.786Z"
+  },
+  "AaveProtocolDataProvider": {
+    "address": "0x79b627B56252468FD53d6F2d7C572Ea969dCC10D",
+    "deployedAt": "2026-09-18T23:30:55.786Z"
+  },
+  "AaveOracle": {
+    "address": "0x4736549aB02e6c6b7083b7625464368E203287E4",
+    "deployedAt": "2026-09-18T23:30:55.786Z",
+    "baseCurrency": "0x0000000000000000000000000000000000000000",
+    "baseCurrencyUnit": "100000000"
+  },
+  "_config": {
+    "irs": {
+      "optimalUsageRatio": 8000,
+      "baseVariableBorrowRate": 0,
+      "variableRateSlope1": 400,
+      "variableRateSlope2": 7500
+    }
+  },
+  "_reserves": {
+    "wUSDC": {
+      "asset": "0xbce339ba4c3a8de3bb8af1c5539e6ac11da3112d",
+      "aToken": "0x12e0E4bDb983EC3fA81ECb8EC226d6a37F7b3fA5",
+      "vToken": "0x893500a6a3273E639A341036584d33F926519caa",
+      "mockAggregator": "0xD983a0026022a914896870d31C42bbE011DEa57b",
+      "priceUsd": 1,
+      "ltv": 7500,
+      "liquidationThreshold": 8000,
+      "liquidationBonus": 10500,
+      "decimals": 6,
+      "initializedAt": "2026-09-18T23:35:28.526Z"
+    },
+    "wETH": {
+      "asset": "0x02aeace038269f9961c93d04dcacd6fb3adfa55f",
+      "aToken": "0x21B5602CdDAD66008e328F10Af5eB6563B065330",
+      "vToken": "0x4cBEAA467e687CD9d4b73ac9Ec0dfC000A605B30",
+      "mockAggregator": "0x7465eEd581FBc7068F76e4A76E135ac4027f4c8D",
+      "priceUsd": 3000,
+      "ltv": 7000,
+      "liquidationThreshold": 7500,
+      "liquidationBonus": 10500,
+      "decimals": 8,
+      "initializedAt": "2026-09-18T23:36:05.822Z"
+    },
+    "wSOL": {
+      "asset": "0x39f36444fcb79b3e691544aee2a832ebef54ca9f",
+      "aToken": "0x9d9c3bf348Bf40fd35f6F9F0C46921e7Bd7e1ED0",
+      "vToken": "0x485b8827E17c05Aa46C2E0F34388919e73DcAa86",
+      "mockAggregator": "0x0a1a56F815568Dc5883f7205BFf94522112106A5",
+      "priceUsd": 200,
+      "ltv": 6500,
+      "liquidationThreshold": 7000,
+      "liquidationBonus": 10500,
+      "decimals": 9,
+      "initializedAt": "2026-09-18T23:36:42.542Z"
+    },
+    "wBTC": {
+      "asset": "0x94834153ea70219d44edfe295697ff0c204ec68c",
+      "aToken": "0xEEc1D1335F5ca2BabEfbf98D10c2145147E42Db2",
+      "vToken": "0x67034C739c5dD5d26AF5279B8F50B6cD87e447A4",
+      "priceFeed": "0x2b7fE04fa357feC3837eE241fDc9Cea2Eb9470DB",
+      "ltv": 7000,
+      "liquidationThreshold": 7500,
+      "liquidationBonus": 10500,
+      "decimals": 9,
+      "initializedAt": "2026-11-05T20:25:40.086Z",
+      "supplyCap": 50,
+      "borrowCap": 20
+    }
+  },
+  "UiPoolDataProviderV3": {
+    "address": "0xd5C1348e15543A04e6A10303429F75d1ddeFD152",
+    "deployedAt": "2026-09-18T23:38:35.887Z",
+    "ctor": {
+      "networkBaseAggregator": "0x7465eEd581FBc7068F76e4A76E135ac4027f4c8D",
+      "marketRefAggregator": "0x11f83e801fC1a9f5628a11c45d976d7710F06353"
+    }
+  },
+  "WalletBalanceProvider": {
+    "address": "0xaEd052bE89183064598Ee15c2995a2eaD48ba047",
+    "deployedAt": "2026-09-18T23:38:43.818Z"
+  },
+  "LiquidationDataProvider": {
+    "address": "0xBCE92c281746cC502c74DDaC34C98Ff55A052D2a",
+    "deployedAt": "2026-09-18T23:38:43.818Z",
+    "ctor": {
+      "pool": "0x81e7e7e4cBC2b5a55C2dE1d3dFCf87C0cF867520",
+      "addressesProvider": "0x8f40D56ffAA473120177c65FC5EE431b22353CD4"
+    }
+  }
+}

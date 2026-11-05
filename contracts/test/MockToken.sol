@@ -1,17 +1,16 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: LicenseRef-Rome-Protocol
 pragma solidity ^0.8.27;
 
 import {IERC20} from 'openzeppelin-contracts/contracts/token/ERC20/IERC20.sol';
 
 /**
  * Minimal ERC20 with an external `mint(address,uint256)` callable by the
- * configured `minter`. Used by the Aave-on-Rome demo's /faucet page so
- * test users can claim balance for testing supply / borrow flows without
- * bridging from Solana.
+ * configured `minter`. A minimal mintable ERC20 for testing supply and
+ * borrow without bridging from Solana.
  *
- * Intentionally NOT cached-SPL-wrapper-backed. The 3 canonical reserves
- * (USDC / ETH / SOL on Hadrian) keep their cached-wrapper identity; the
- * 4 mock reserves are pure EVM tokens whose only purpose is testing.
+ * Intentionally NOT cached-SPL-wrapper-backed. The four reserves on Hadrian
+ * (wUSDC, wETH, wSOL, wBTC) are cached SPL wrappers; these mock tokens are
+ * plain EVM faucet tokens whose only purpose is testing.
  *
  * Plain ERC20 means Aave's `init-reserve` ATA-warmup probe (selector
  * 0x5e094743) returns false and skips the warmup — these tokens compose

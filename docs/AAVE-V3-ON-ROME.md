@@ -1,196 +1,185 @@
 # Aave V3 on Rome
 
-Living documentation for the Aave V3 deployment on Rome (reference chain:
-**Hadrian**, `200010`, Rome testnet on Solana devnet substrate). Covers what
-runs, how it differs from mainnet Aave, and how to integrate with it. End-user
-instructions for the demo UI live in
-[`rome-aave-v3-demo/docs/USER-GUIDE.md`](https://github.com/rome-protocol/rome-aave-v3-demo/blob/main/docs/USER-GUIDE.md).
+How the Aave V3 deployment on Rome is built and run. The reference chain is **Hadrian** (`200010`), Rome's public testnet on a Solana devnet substrate. This page covers what runs, how it differs from Aave on Ethereum, how to deploy it, the day-2 tasks, the price oracle, and the flash-loan pattern.
 
-> Addresses below are point-in-time for Hadrian; `deployments/<chain>.json`
-> and the registry (`apps/aave/<chainId>-<slug>.json`) are authoritative.
+The addresses below are for Hadrian. `deployments/hadrian.json` and the other `deployments/hadrian-*.json` files are the record of this market.
 
 ---
 
-## 1. What this is — Aave V3, canonically, on Rome EVM
+## 1. What this is
 
-This is **canonical Aave V3.6**, byte-identical to the upstream
-`@aave-dao/aave-v3-origin@3.6.0` source (slim cut), running unmodified inside
-Rome's EVM. Same `Pool`, `PoolConfigurator`, `AaveOracle`, aTokens, variable
-debt tokens, interest-rate strategy. Compiler matches Aave's foundry.toml:
-solc 0.8.27, optimizer runs 200, `evm_version: shanghai`, `bytecodeHash: none`.
+The lending protocol is **Aave V3.6**, a slim cut of [`aave-dao/aave-v3-origin`](https://github.com/aave-dao/aave-v3-origin) vendored unmodified under `contracts/`, running inside Rome's EVM. The source is main at commit 1e3d70c (February 2026, after the v3.6.0 release); `UiPoolDataProviderV3`, `IERC20DetailedBytes` and the two OpenZeppelin `IERC20` and `IERC20Detailed` copies are from the v3.6.0 tag. Each vendored file keeps its upstream licence header; `NOTICE` lists the licences. Compiler settings follow Aave's `foundry.toml`: solc 0.8.27, optimizer runs 200, `evm_version: shanghai`, `bytecodeHash: none`.
 
-The design principle (shared with rome-uniswap-v3, compound-on-rome): **modify
-the token, keep the protocol canonical.** Aave's contracts are untouched; the
-only Rome-specific pieces sit at the edges:
+The principle is **modify the token, keep the protocol canonical.** Pool, PoolConfigurator, the aTokens, the variable debt token and the interest-rate strategy are Aave's. What is Rome-specific sits at the edges:
 
 | Layer | What | Rome-specific? |
 |---|---|---|
-| Lending protocol | Aave V3.6 Pool + tokens + configurator | **No** — byte-identical mainnet source |
-| Reserve underlyings | `SPL_ERC20_cached` wrappers (wUSDC/wETH/wSOL) + mock ERC-20s (HEAT/SALT/MILK/OIL) | The wrappers are Rome (ERC-20 view over a real Solana SPL token) |
-| Price oracle | `AaveOracle` reading per-asset sources | Real assets read **live Pyth via OG-V2** (see §2); mock tokens use fixed `MockAggregator`s |
-| Flash-loan receivers | user-supplied; demo ships a pre-approved one | Pre-approve pattern is Rome's answer to Solana's account cap (see §3) |
+| Lending protocol | Aave V3.6 Pool, tokens, configurator | No, Aave's contracts |
+| Reserve underlyings | `SPL_ERC20_cached` wrappers (wUSDC, wETH, wSOL, wBTC): an ERC-20 view over a real Solana SPL token | Yes, the wrappers are Rome's |
+| Price oracle | `RomePriceOracle` `0x3ca9343F21661c1F854860532deeC2734bcD869B`: the pool's price oracle (`PoolAddressesProvider.getPriceOracle()`) | Yes, Rome's own contract (section 5): it reads the **PriceBook entries directly**, one contract and no per-asset shim. `AaveOracle` `0x4736549a…` is only the previous oracle, still deployed and no longer read by the pool |
+| Flash-loan receivers | User-supplied; this repo ships a pre-approved one | Yes, the pre-approve pattern answers Solana's account limit (section 6) |
 
-Settlement is Solana-fast; the contracts and JSON-RPC surface are
-EVM-canonical, so MetaMask + ethers/viem + the Aave SDK all work as-is.
+Settlement is Solana-fast; the contracts and the JSON-RPC surface are EVM-standard, so MetaMask, ethers, viem and the Aave SDK work as they do elsewhere.
 
 ### Live Hadrian addresses (200010)
 
 | Contract | Address |
 |---|---|
-| `PoolAddressesProvider` | `0xDba99FC11d7383e722F6DEc181F71560b2780f14` |
-| `Pool` | `0x56cD6Bd0FDAd19F44df9D8b9aadD84f964c2fE11` |
-| `PoolConfigurator` | `0x0C87be51a3676B5B5d9929C99B3F8496ecBB8B03` |
-| `ACLManager` | `0x5E0FDb82A68f3705e93C5384Ccb8ac3e6841bD55` |
-| `AaveOracle` | `0x8A7dcF67BBe2BacF6f9d82E14c16B76df6b9DB11` |
-| `AaveProtocolDataProvider` | `0xE58Ea21dBF3f117cC8e39895E9Dcb843A31441d4` |
+| `PoolAddressesProvider` | `0x8f40D56ffAA473120177c65FC5EE431b22353CD4` |
+| `Pool` | `0x81e7e7e4cBC2b5a55C2dE1d3dFCf87C0cF867520` |
+| `PoolConfigurator` | `0x1186549d0E2308579337ff064B2C5865F416d01F` |
+| `ACLManager` | `0x15Ef778f6399Ae984cc2A816afE76e30bd9e14D0` |
+| `DefaultReserveInterestRateStrategyV2` | `0xb0a1f16C6a4254bf41BD6c972A0ABC223ba61297` |
+| `RomePriceOracle` (the pool's price oracle) | `0x3ca9343F21661c1F854860532deeC2734bcD869B` |
+| `AaveOracle` (previous price oracle) | `0x4736549aB02e6c6b7083b7625464368E203287E4` |
+| `AaveProtocolDataProvider` | `0x79b627B56252468FD53d6F2d7C572Ea969dCC10D` |
+| `UiPoolDataProviderV3` | `0xd5C1348e15543A04e6A10303429F75d1ddeFD152` |
+| `WalletBalanceProvider` | `0xaEd052bE89183064598Ee15c2995a2eaD48ba047` |
+| `LiquidationDataProvider` | `0xBCE92c281746cC502c74DDaC34C98Ff55A052D2a` |
 
-Reserves: **wUSDC, wETH, wSOL** (cached SPL wrappers) + **HEAT, SALT, MILK,
-OIL** (mock collateral tokens). The mock tokens are minted by a faucet
-(`0xD3f2f2fa8B13e8B25E7c16dCe6566B4921425071`, 100 of each + 10 native gas,
-once per address).
+| Reserve (LTV / liquidation threshold / bonus) | Underlying wrapper | aToken | variableDebtToken |
+|---|---|---|---|
+| wUSDC (6 decimals, 7500 / 8000 / 10500) | `0xbce339ba4c3a8de3bb8af1c5539e6ac11da3112d` | `0x12e0E4bDb983EC3fA81ECb8EC226d6a37F7b3fA5` | `0x893500a6a3273E639A341036584d33F926519caa` |
+| wETH (8 decimals, 7000 / 7500 / 10500) | `0x02aeace038269f9961c93d04dcacd6fb3adfa55f` | `0x21B5602CdDAD66008e328F10Af5eB6563B065330` | `0x4cBEAA467e687CD9d4b73ac9Ec0dfC000A605B30` |
+| wSOL (9 decimals, 6500 / 7000 / 10500) | `0x39f36444fcb79b3e691544aee2a832ebef54ca9f` | `0x9d9c3bf348Bf40fd35f6F9F0C46921e7Bd7e1ED0` | `0x485b8827E17c05Aa46C2E0F34388919e73DcAa86` |
+| wBTC (9 decimals, 7000 / 7500 / 10500; supply cap 50, borrow cap 20) | `0x94834153ea70219d44edfe295697ff0c204ec68c` | `0xEEc1D1335F5ca2BabEfbf98D10c2145147E42Db2` | `0x67034C739c5dD5d26AF5279B8F50B6cD87e447A4` |
 
----
-
-## 2. Oracle — live Pyth via Oracle Gateway V2
-
-`AaveOracle` reads a price source per asset. On Hadrian:
-
-- **wUSDC / wETH / wSOL** → live Pyth, read through OG-V2's `PythPullAdapter`
-  (the adapter clones read the on-chain Pyth **Solana** PDA — an EVM→Solana
-  cross-VM read — kept ~20-30s fresh by the oracle-keeper). So every
-  supply/borrow/liquidate/HF read exercises the cross-VM oracle path.
-- **HEAT / SALT / MILK / OIL** → fixed `MockAggregator`s (invented demo
-  tokens; no real Pyth feed exists).
-
-**Interface gap (important):** Aave V3 reads the Chainlink-**V2**
-`latestAnswer()`; OG-V2's adapter implements only Chainlink-**V3**
-`latestRoundData()`. Pointing AaveOracle directly at the adapter reverts
-`getAssetPrice` → the whole market breaks. A shim bridges them:
-
-- `contracts/misc/PythPullToV2ShimResilient.sol` — forwards
-  `latestRoundData().answer` as `latestAnswer()`, and on **any** revert
-  (stale / paused / low-confidence) or non-positive price **falls back to the
-  asset's mock aggregator** instead of propagating the revert. Net: fresh
-  keeper → real Pyth; keeper lapse → last canonical mock price, never a
-  market-wide revert. (`PythPullToV2Shim.sol` is the minimal non-resilient
-  reference; don't wire it in production — a keeper lapse would break reads.)
-
-Migrate: `npx hardhat run scripts/migrate-oracle-to-ogv2-resilient.ts --network hadrian`
-(deploys one shim per asset, verifies each reads a sane live price *before*
-`setAssetSources`, verifies AaveOracle after). Revert:
-`scripts/revert-oracle-to-mocks.ts`.
+The wrapper moves SPL tokens as the holder's delegate: every EOA signs `HelperProgram.approve_spl(wrapper, max, mint)` once per wrapper before its first `supply` or `repay` (probe `wrapper.isEnabled(user)`). Contracts such as the aTokens are tracked in the wrapper's escrow ledger and need nothing.
 
 ---
 
-## 3. Flash loans — the pre-approve pattern
+## 2. Prerequisites
 
-Single-asset `flashLoanSimple` works out of the box. **Multi-asset
-`Pool.flashLoan` (2+ cached wrappers) needed one Rome-specific change** —
-not a protocol change, a receiver-design change.
+- Node and the repo's Hardhat 3: `yarn install`.
+- A funded deployer key in the Hardhat keystore as `HADRIAN_PRIVATE_KEY`: `npx hardhat keystore set HADRIAN_PRIVATE_KEY`. Never put a key on a command line.
+- Network config is in `hardhat.config.ts` (`hadrian`).
 
-Solana caps accounts per transaction (64 mainnet / 128 devnet). Rome's
-iterative VM declares the same account union on every signature, so the cap is
-effectively per-sig. Aave's canonical in-callback `IERC20.approve(POOL, …)`
-adds the SPL `approve_checked` accounts (~3-4 per asset), pushing a 2-asset
-flash loan past the cap → the proxy rejects it (surfaced as an empty
-JSON-RPC `-32000`).
-
-**Fix:** pre-approve the receiver to the Pool in a one-time `init()` tx (at
-deploy time), so the flash-loan tx itself carries no in-callback approve. A
-2-asset flash loan then lands at ~60 accounts/sig, under the cap.
-
-Receiver contracts (`contracts/test/`):
-- `PreApprovedFlashReceiverBase.sol` — abstract base with the pre-approve
-  lifecycle + hardening (anti-spoof `msg.sender == POOL`, anti-grief
-  `authorizedInitiator` whitelist, onlyOwner init/revoke/sweep).
-- `PreApprovedMultiFlashReceiver.sol` — concrete production receiver.
-- `DemoOpenMultiFlashReceiver.sol` (`0x2af94F2C104fD2DfBCFb561238b2F9B0f40eE05A`)
-  — **demo-only**, no initiator whitelist so any wallet can drive the public
-  demo. Testnet-only; production must use the hardened base. The
-  `deploy-flash-receiver --demo` path is **mechanically gated**: it reads the
-  live chainId and hard-fails unless it is in an explicit testnet allowlist
-  (`DEMO_RECEIVER_TESTNET_CHAIN_IDS`), so the no-initiator receiver can never be
-  shipped to a mainnet chain by a stray flag.
-
-Smoke it: `npx hardhat gamut-extras --network hadrian`.
+All tasks run as `npx hardhat <task> --network hadrian`.
 
 ---
 
-## 4. Setting up a live liquidation demo
+## 3. Deploying the protocol from scratch
 
-You can't liquidate your own position, and Aave/the demo run **no keeper bot**
-— liquidation is a manual `Pool.liquidationCall`. To demo it you need a
-*different* account underwater. `scripts/liquidation-demo-setup.ts` does this
-with two mock tokens (so it's self-provisioning via the faucet, no real value):
-
-1. A throwaway LP key claims + supplies MILK (borrow liquidity).
-2. A throwaway victim key claims HEAT, supplies it as collateral, borrows MILK.
-3. The deployer drops HEAT's **mock** price → victim's HF falls below 1.
-4. The victim now appears in the `/liquidate` feed; any wallet with MILK can
-   liquidate it and collect the 10% bonus.
+Order matters: reserves depend on the core stack, and the flash-loan smoke depends on liquidity.
 
 ```bash
-npx hardhat run scripts/liquidation-demo-setup.ts --network hadrian
+# 1. Core stack: PoolAddressesProvider, ACLManager, interest-rate strategy, Pool (proxy),
+#    PoolConfigurator, aToken and debt-token implementations, data provider.
+npx hardhat deploy --network hadrian
+
+# 2. View helper an app needs for getReservesData / getUserReservesData.
+npx hardhat deploy-ui-helpers --network hadrian
+
+# 3. (optional) Test tokens and a faucet (HEAT / SALT / MILK / OIL).
+npx hardhat deploy-faucet --network hadrian
+
+# 4. List each reserve (asset, price source, risk parameters), one call per asset.
+npx hardhat init-reserve --network hadrian --asset <underlying> --symbol <symbol> --decimals <n> --price-feed <source>
+
+# 5. (optional) Auxiliary view helpers: WalletBalanceProvider and LiquidationDataProvider.
+npx hardhat deploy-aux --network hadrian
+
+# 6. (optional) E-mode categories.
+npx hardhat setup-emodes --network hadrian
+
+# 7. Seed borrow-side liquidity so borrows and flash loans have funds.
+npx hardhat seed-pool --network hadrian
 ```
 
-The script prints the victim address + HF. Restore prices afterward with
-`hardhat reset-oracle-prices`. (Note: only mock-priced tokens — HEAT/SALT/
-MILK/OIL — can have their price dropped this way; wUSDC/wETH/wSOL read live
-Pyth and can't be moved.)
+Every deploy task writes the resulting addresses to `deployments/<network>.json`.
 
 ---
 
-## 5. Verification commands
+## 4. Tasks and scripts
+
+| Task or script | What it does |
+|---|---|
+| `hardhat gamut-extras --network hadrian` | Smoke test: multi-asset `flashLoan` through a pre-approved receiver, `setUserEMode`, and `repayWithATokens` |
+| `hardhat deploy-flash-receiver --network hadrian [--demo true]` | Deploy and `init()` a pre-approved flash-loan receiver. `--demo true` deploys the no-initiator-check `DemoOpenMultiFlashReceiver`, which is hard-gated to a testnet chain-id allowlist (section 6) |
+| `hardhat seed-pool --network hadrian` | Supply deployer-held wrapper liquidity into the pool |
+| `hardhat setup-emodes --network hadrian` | Configure E-mode categories and bind assets |
+| `hardhat reset-oracle-prices --network hadrian` | Restore mock-priced reserves to their canonical mock prices. It edits `AaveOracle` only, so it has no effect on the pool while `RomePriceOracle` is the pool's oracle |
+| `scripts/switch-price-oracle.ts` | Point the pool at the oracle in `deployments/hadrian-rome-price-oracle.json` with `PoolAddressesProvider.setPriceOracle` (owner only); `PRICE_ORACLE=previous` points it back |
+| `scripts/switch-oracle-to-book.ts` | Point the listed reserves of `AaveOracle` at the shims in one `setAssetSources` call (`ORACLE_SHIMS=lean` or `book`) |
+| `scripts/revert-oracle-to-constants.ts` | Point the listed reserves of `AaveOracle` back at their constant aggregators |
+| `scripts/measure-price-cost.ts` | Read-only: `eth_estimateGas` and the Solana account count for borrow, withdraw and `liquidationCall` |
+| `scripts/measure-rome-price-oracle.ts` | Read-only: account counts for `AaveOracle` against a direct PriceBook read, and a real borrow if you pass a user |
+| `scripts/set-reserve-caps.ts` | Supply and borrow cap (whole tokens) for one reserve through `PoolConfigurator`; `DRY_RUN=1` previews with `eth_call` and `eth_estimateGas` |
+| `scripts/wbtc-admin.ts` | Pool-admin calls for the wBTC reserve (borrow off, LTV zero, drop, withdraw all), signed by the keystore key; `DRY_RUN=1` previews |
+| `scripts/wbtc-four-collateral-measure.ts` | Read-only: account counts for borrow, withdraw-with-debt and `liquidationCall` of a user holding all four assets as collateral, against the proxy's account ceiling |
+
+Scripts run as `npx hardhat run scripts/<name>.ts --network hadrian`. The unit tests run the same way: `npx hardhat run test/rome-price-oracle.test.ts` (likewise `test/price-book-entry-shim.test.ts` and `test/book-shim-resilient.test.ts`).
+
+---
+
+## 5. Oracle: reading the PriceBook directly
+
+Rome's live prices are the **PriceBook** (`0xac3d80043ead56fcf94db4574a69ee0975f7a63f`): one entry per source account, refreshed by a keeper, each entry carrying an answer, a publish time and a status. The USDC, ETH, SOL and BTC entries are what Aave reads.
+
+`AaveOracle` reads one Chainlink-V2 `latestAnswer()` source per asset. A Solana transaction carries a limited number of accounts (Rome's SDK allows 63), and every contract a price read touches adds accounts. Reading a price through `AaveOracle`, a per-asset shim and the PriceBook's feed adapter was too many for a borrow against several collateral assets, so the oracle was reduced in steps:
+
+1. `contracts/misc/BookFeedToV2ShimResilient.sol` wraps a PriceBook feed adapter as a V2 source, with a fixed fallback price when the adapter reverts or answers zero or less.
+2. `contracts/misc/PriceBookEntryShim.sol` drops the adapter: it calls `PriceBook.entryOf(sourceAccount)` once and keeps the entry key, `maxStaleness` and the fallback price in immutable bytecode.
+3. `contracts/misc/RomePriceOracle.sol` drops `AaveOracle` as well. The pool asks `PoolAddressesProvider.getPriceOracle()` for this one contract, which reads each asset's PriceBook entry directly and holds the asset table and the PriceBook address as immutables. No storage read, no per-asset contract. It has four slots: wUSDC, wETH, wSOL, wBTC.
+
+`RomePriceOracle` implements what the vendored v3.6 code calls on the oracle: `getAssetPrice`, `BASE_CURRENCY` (0, USD) and `BASE_CURRENCY_UNIT` (1e8), `getAssetsPrices`, `getSourceOfAsset` (the oracle itself for its four assets, zero otherwise) and `getFallbackOracle` (zero). The setters are not implemented: the table is fixed, and a change is a new oracle plus `setPriceOracle`.
+
+**Fallback rule.** An entry is valid when its status is live (1), `answer > 0`, `publishTime` is not in the future, and `now - publishTime <= maxStaleness` (3600 s). Any other state (never written, paused, stale, non-positive, or an unreachable book) returns the fixed fallback price stored in the contract, not a revert, so a stalled book never breaks `getReservesData` or `getUserAccountData`. The fallback is the live price read at deploy time, so a stalled book freezes the price at that value. An unknown asset reverts, as `AaveOracle` does on Hadrian (it has no fallback oracle). The PriceBook itself refuses to write a price whose confidence interval is too wide, so the oracle needs no extra read for that.
+
+**Account counts.** Measured read-only on Hadrian on 2026-11-05 with `rome_emulateCallAccounts`: one price read through `AaveOracle` touches 11 accounts and a direct `entryOf` read 8. `RomePriceOracle` adds only its own contract account to the direct read. `scripts/measure-rome-price-oracle.ts` repeats the measurement, and `scripts/measure-price-cost.ts` measures a real borrow, withdraw or liquidation. Take compute units from the receipts of real sends: `eth_estimateGas` is Rome gas, not Solana compute units.
+
+The records of what is deployed are `deployments/hadrian-rome-price-oracle.json` (the oracle, the PriceBook, and each asset's entry key, `maxStaleness` and fallback price), `deployments/hadrian-oracle-lean-shims.json` and `deployments/hadrian-oracle-shims.json`. The oracle deploy scripts read their inputs from Rome's chain registry and are not part of this repository; the records hold the values they wrote. `hadrian-oracle-shims.json` holds the `BookFeedToV2ShimResilient` shims (a feed adapter over the PriceBook, 3600 s, with a constant-aggregator fallback), and `hadrian-oracle-lean-shims.json` holds the `PriceBookEntryShim` shims that `AaveOracle` reads.
+
+---
+
+## 6. Flash loans: the pre-approve pattern
+
+Single-asset `flashLoanSimple` works as on Ethereum. Multi-asset `Pool.flashLoan` with two or more cached wrappers needs one Rome-specific change, in the receiver, not in the protocol.
+
+Solana caps the accounts a transaction carries, and Rome's iterative VM declares the same account union on every signature. Aave's canonical in-callback `IERC20.approve(POOL, ...)` adds the SPL `approve_checked` accounts for each asset (about 3-4 each), which pushes a two-asset flash loan past the cap, and the proxy rejects it.
+
+The fix is to approve the Pool once, in a separate `init()` transaction at deploy time, so the flash-loan transaction carries no in-callback approve. A two-asset flash loan then lands at about 60 accounts per signature.
+
+Receivers (`contracts/test/`):
+
+- `PreApprovedFlashReceiverBase.sol`: abstract base with the pre-approve lifecycle and its hardening (`msg.sender == POOL`, an `authorizedInitiator` whitelist, owner-only `init`, `revoke` and `sweep`).
+- `PreApprovedMultiFlashReceiver.sol`: the concrete receiver.
+- `DemoOpenMultiFlashReceiver.sol`: demo only. It has no initiator whitelist, so any wallet can drive a public demo. `deploy-flash-receiver --demo` reads the live chain id and fails unless it is in the testnet allowlist (`DEMO_RECEIVER_TESTNET_CHAIN_IDS`), so this receiver cannot be deployed to a mainnet chain by a stray flag.
+
+Smoke test: `npx hardhat gamut-extras --network hadrian`.
+
+---
+
+## 7. Verification commands
 
 ```bash
-# A price reads sane through the oracle (8-dec USD):
-cast call 0x8A7dcF67BBe2BacF6f9d82E14c16B76df6b9DB11 \
+# A price through the pool's oracle (8-decimal USD):
+cast call 0x3ca9343F21661c1F854860532deeC2734bcD869B \
   "getAssetPrice(address)(uint256)" <underlying> --rpc-url https://hadrian.testnet.romeprotocol.xyz/
 
-# Demo flash-loan receiver is callable + pre-approved:
-cast call 0x2af94F2C104fD2DfBCFb561238b2F9B0f40eE05A "POOL()(address)" \
-  --rpc-url https://hadrian.testnet.romeprotocol.xyz/   # → the Pool address
-
 # A user's account health:
-cast call 0x56cD6Bd0FDAd19F44df9D8b9aadD84f964c2fE11 \
+cast call 0x81e7e7e4cBC2b5a55C2dE1d3dFCf87C0cF867520 \
   "getUserAccountData(address)(uint256,uint256,uint256,uint256,uint256,uint256)" \
   <user> --rpc-url https://hadrian.testnet.romeprotocol.xyz/
 
-# Full smoke:
-npx hardhat gamut-extras --network hadrian   # expect all PASS
+# Smoke test:
+npx hardhat gamut-extras --network hadrian
 ```
 
 ---
 
-## 6. Mainnet-readiness checklist
+## 8. Before a mainnet market
 
-Hadrian is a **testnet demo**. Several deliberate testnet choices MUST change
-before any mainnet promotion — none are bugs on testnet:
+Hadrian is a testnet, and a few testnet choices change before a market with real funds:
 
-- **Admin is a single EOA.** The deployer (`0x1f4946Be…48F6`) is ACL admin +
-  pool admin + asset-listing admin + emergency admin + `PoolAddressesProvider`
-  owner + `AaveOracle` source-setter + faucet owner + mock-token minter. That
-  one key can repoint any asset's price source (the liquidation lever). Mainnet:
-  split roles across a multisig / timelock.
-- **Treasury = deployer, reserve factor 0.** No `Collector` is deployed (slim
-  cut); reserve fees would accrue to the deployer EOA. Deploy `treasury/Collector`
-  + set a real treasury before reserve factor > 0.
-- **Resilient oracle shim falls back to a frozen mock.**
-  `PythPullToV2ShimResilient` returns a `MockAggregator` price on any OG-V2
-  revert (keeper lapse) so the market never reverts — correct for a testnet
-  demo, **dangerous on a live market** (a stale / owner-settable price feeding
-  liquidations). `latestAnswer()` is `view`, so it cannot emit on fallback;
-  observability is the off-chain oracle-keeper staleness alert. Mainnet: don't
-  use the resilient variant — wire a real second source and let
-  `PriceOracleSentinel` gate liquidations on staleness.
-- **Demo flash receiver has no initiator check.** `DemoOpenMultiFlashReceiver`
-  is testnet/demo-only and now **mechanically gated** to a testnet chainId
-  allowlist in `deploy-flash-receiver` (§3). Mainnet apps inherit
-  `PreApprovedFlashReceiverBase` (initiator whitelist).
-- **MockAggregator prices are frozen** for HEAT/SALT/MILK/OIL (invented demo
-  tokens). Mainnet markets list only assets with a real price feed.
+- **Admin is a single EOA.** The deployer is ACL admin, pool admin, asset-listing admin, emergency admin and owner of `PoolAddressesProvider`, and it can point the pool at another oracle. A live market splits these roles across a multisig and a timelock.
+- **Treasury is the deployer and the reserve factor is 0.** The slim cut ships no `Collector`. Deploy `treasury/Collector` and set a real treasury before the reserve factor goes above 0.
+- **The oracle falls back to a fixed price.** `RomePriceOracle` and the shims answer a fixed price when the book stalls, which keeps a testnet market answering and is wrong for a market with real liquidations: a stale price would feed them. A live market wires a real second source and lets `PriceOracleSentinel` gate liquidations on staleness.
+- **The demo flash receiver has no initiator check.** It is gated to testnet chain ids in `deploy-flash-receiver`. A live market inherits `PreApprovedFlashReceiverBase`.
 
-## 7. Related
+---
 
-- Demo UI + user guide: [`rome-aave-v3-demo`](https://github.com/rome-protocol/rome-aave-v3-demo)
-- Registry entry: `apps/aave/200010-hadrian.json`
+## 9. Related
+
+- Demo app and user guide: [`rome-aave-v3-demo`](https://github.com/rome-protocol/rome-aave-v3-demo)
+- Rome documentation: [docs.rome.builders](https://docs.rome.builders)

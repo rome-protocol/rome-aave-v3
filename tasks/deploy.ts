@@ -93,7 +93,7 @@ export default task("deploy", "Deploy canonical Aave V3 slim-cut stack")
     console.log(`DefaultReserveInterestRateStrategyV2: ${irsAddr}`);
 
     // 4. Pool implementation needs 5 logic libraries linked.
-    // These are external (non-internal) Solidity libraries — Aave compiles
+    // These are Solidity libraries with external functions — Aave compiles
     // them into separate contracts to keep Pool bytecode under the 24KB
     // EIP-170 limit. Library deps within the set:
     //   - FlashLoanLogic depends on BorrowLogic

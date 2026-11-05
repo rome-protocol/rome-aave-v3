@@ -2,14 +2,12 @@ import * as fs from "fs";
 import * as path from "path";
 import { task } from "hardhat/config";
 
-// Resets oracle prices to the canonical values defined in deployments/<network>.json#_reserves.
-// Useful after running the gamut, which leaves a "cranked" aggregator wired in
-// (the liquidation simulation moves the price up to make a borrower underwater)
-// and doesn't restore the original. For a demo deployment, prices need to
-// match the documented canonical values (USDC=$1, ETH=$3000, SOL=$200).
+// Points each mock-priced reserve's AaveOracle source at a fresh MockAggregator at the USD price
+// recorded in deployments/<network>.json#_reserves (for example after a test moved a price).
+// Reserves on a PriceBook shim are left alone.
 //
-// Per asset: deploy a fresh MockAggregator at the original USD price and call
-// AaveOracle.setAssetSources to overwrite the cranked one.
+// Per asset: deploy a fresh MockAggregator at the recorded USD price and call
+// AaveOracle.setAssetSources to overwrite the current source.
 
 export default task("reset-oracle-prices", "Restore oracle sources to canonical mock prices")
   .setInlineAction(async (_args, hre) => {
@@ -35,6 +33,17 @@ export default task("reset-oracle-prices", "Restore oracle sources to canonical 
     const assets: string[] = [];
     const sources: string[] = [];
 
+    // Reserves already on a BOOK shim (deployments/<net>-oracle-shims.json) or a lean PriceBook shim
+    // (deployments/<net>-oracle-lean-shims.json) stay on it.
+    const shimOf: Record<string, string[]> = {};
+    for (const file of [`${networkSlug}-oracle-shims.json`, `${networkSlug}-oracle-lean-shims.json`]) {
+      const shimsPath = path.join("deployments", file);
+      if (!fs.existsSync(shimsPath)) continue;
+      for (const s of Object.values(JSON.parse(fs.readFileSync(shimsPath, "utf8")).shims ?? {}) as any[]) {
+        (shimOf[s.asset.toLowerCase()] ??= []).push(s.shim.toLowerCase());
+      }
+    }
+
     for (const [sym, r] of Object.entries(reserves)) {
       const reserve = r as any;
       const priceUsd = reserve.priceUsd;
@@ -44,6 +53,10 @@ export default task("reset-oracle-prices", "Restore oracle sources to canonical 
       }
       const priceScaled = BigInt(Math.round(parseFloat(String(priceUsd)) * 1e8));
       const currentSource: string = await oracle.getSourceOfAsset(reserve.asset);
+      if ((shimOf[reserve.asset.toLowerCase()] ?? []).includes(currentSource.toLowerCase())) {
+        console.log(`  ${sym}: on a price shim ${currentSource} - skipped (run switch-oracle-to-book.ts / revert-oracle-to-constants.ts to change it)`);
+        continue;
+      }
       const currentValue: bigint = await (await ethers.getContractAt("MockAggregator", currentSource)).latestAnswer();
 
       if (currentValue === priceScaled) {

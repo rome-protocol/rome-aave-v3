@@ -1,18 +1,67 @@
 rome-aave-v3
-Copyright (c) Rome Protocol contributors
+Copyright (c) 2026 Coin Vesting Inc. d/b/a Rome Protocol. All rights reserved.
 
-This repository is a deployment-focused fork of Aave V3
-(https://github.com/aave-dao/aave-v3-origin, v3.6.0), adapted to deploy
-against Rome Protocol's SPL_ERC20_cached token wrappers on an EVM chain
-running natively inside the Solana runtime.
+Rome Protocol's own code in this repository is under the Rome Protocol licence
+in LICENSE (SPDX: LicenseRef-Rome-Protocol). This repository also contains
+vendored third-party code, which stays under its original licence. Each
+vendored Solidity file keeps its upstream SPDX-License-Identifier header; where
+a file's header and this notice differ, the header governs.
 
-Licensing is preserved from upstream on a per-file basis (see SPDX
-headers and LICENSE): core protocol contracts remain under the Business
-Source License 1.1 (BUSL-1.1) as published by Aave DAO; periphery and
-interface files retain their original MIT / LGPL-3.0 licenses. The
-BUSL-1.1 terms, including the Change Date and Additional Use Grant, are
-those set by the upstream licensor (Aave DAO) — this fork adds no new
-grants and removes no restrictions.
+Rome-authored files (LicenseRef-Rome-Protocol)
+----------------------------------------------
 
-Modifications relative to upstream are limited to deployment scripts,
-token-wrapper integration, and configuration for Rome chains.
+  contracts/misc/BookFeedToV2ShimResilient.sol
+  contracts/misc/PriceBookEntryShim.sol
+  contracts/misc/RomePriceOracle.sol
+  contracts/test/*.sol (flash-loan receivers, Faucet, MockToken, price-book mocks)
+  scripts/, tasks/, test/, docs/ and deployments/
+
+Vendored third-party parts
+--------------------------
+
+1. Aave V3 protocol (contracts/protocol, contracts/instances, contracts/helpers,
+   contracts/interfaces, contracts/misc except the Rome-authored files above,
+   contracts/mocks)
+
+   Source:    https://github.com/aave-dao/aave-v3-origin, vendored unmodified from
+              main at commit 1e3d70c (February 2026, after the v3.6.0 release).
+              contracts/helpers/UiPoolDataProviderV3.sol,
+              contracts/helpers/interfaces/IERC20DetailedBytes.sol and
+              contracts/dependencies/openzeppelin/contracts/IERC20.sol and
+              IERC20Detailed.sol are from the v3.6.0 tag.
+   Copyright: Aave DAO / Aave Labs
+   Licence:   per file, as in each SPDX header: BUSL-1.1 (the core protocol
+              contracts, e.g. Pool, PoolConfigurator, AToken, VariableDebtToken,
+              the logic libraries) or MIT (the other files). BUSL-1.1 also covers
+              contracts/helpers/UiPoolDataProviderV3.sol,
+              contracts/helpers/WalletBalanceProvider.sol,
+              contracts/helpers/LiquidationDataProvider.sol and
+              contracts/misc/PriceOracleSentinel.sol.
+              The BUSL-1.1 terms, including the Additional Use Grant and the
+              Change Date, are in LICENSES/BUSL-1.1-aave-v3-origin (the
+              upstream repository's LICENSE at tag v3.6.0). The MIT files are
+              under LICENSES/MIT.txt.
+
+2. OpenZeppelin (contracts/dependencies/openzeppelin, and the openzeppelin-contracts
+   npm dependency 5.4.0)
+
+   Source:    https://github.com/OpenZeppelin/openzeppelin-contracts
+   Licence:   MIT (text in LICENSES/MIT.txt)
+
+3. Chainlink interfaces (contracts/dependencies/chainlink)
+
+   Source:    https://github.com/smartcontractkit/chainlink
+   Licence:   MIT (text in LICENSES/MIT.txt)
+
+4. Gnosis Protocol v2 SafeERC20 (contracts/dependencies/gnosis)
+
+   Source:    https://github.com/cowprotocol/contracts
+   Licence:   LGPL-3.0-or-later (text in LICENSES/LGPL-3.0.txt; the LGPL
+              incorporates the GPL-3.0 terms, in LICENSES/GPL-3.0.txt)
+
+5. WETH9 wrapped-native-token contract (contracts/dependencies/weth)
+
+   Source:    WETH9 as carried by Aave v3-origin
+   Copyright: (C) 2015-2017 Dapphub
+   Licence:   GPL-3.0-or-later (licence notice in the file header; text in
+              LICENSES/GPL-3.0.txt)

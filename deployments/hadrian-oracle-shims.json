@@ -1,0 +1,34 @@
+{
+  "deployedAt": "2026-11-05T10:13:50.118Z",
+  "deployer": "0x1f4946Be340F06c46A50E65084790968aBcc48F6",
+  "shims": {
+    "wUSDC": {
+      "asset": "0xbce339ba4c3a8de3bb8af1c5539e6ac11da3112d",
+      "primary": "0x889c1d9f2dD8f5FcE75E260E884A2919e16dbBd5",
+      "fallbackAggregator": "0x9165A273F6be477Ef110793b0C64383cE9FD81C0",
+      "shim": "0x77b79B65105df5caE7D296f074989cFd721E9e79",
+      "priceAtDeploy": "99984938"
+    },
+    "wETH": {
+      "asset": "0x02aeace038269f9961c93d04dcacd6fb3adfa55f",
+      "primary": "0xe765b1aa15046ff217Bd2e8824986F46037bB36f",
+      "fallbackAggregator": "0x66D94D25ECdCbA90eD005A23D67D2FdAc3d4412A",
+      "shim": "0xc0767d12B73B55855D893E4e5456C602550b253f",
+      "priceAtDeploy": "241253991800"
+    },
+    "wSOL": {
+      "asset": "0x39f36444fcb79b3e691544aee2a832ebef54ca9f",
+      "primary": "0x173fe9b24c667827Da8Dd8B8e5aD23fd0e76f8bd",
+      "fallbackAggregator": "0x0E7B06BdA8AC5da68684BDfdADf49539a02ecae0",
+      "shim": "0x72Dc30C129Ec17e3a1Dd5B5541efb00516fD70A0",
+      "priceAtDeploy": "9660459517"
+    },
+    "wBTC": {
+      "asset": "0x94834153ea70219d44edfe295697ff0c204ec68c",
+      "primary": "0xD656B135327a5c4A835818340e8b0B51880DDC77",
+      "fallbackAggregator": "0x05ed4A7e1b57006f033E11d6FA1280885CaDAF82",
+      "shim": "0xe88d1a9EEeD374E9bbF9Bcc3273f4A20Ca3E4b6D",
+      "priceAtDeploy": "8027546427747"
+    }
+  }
+}

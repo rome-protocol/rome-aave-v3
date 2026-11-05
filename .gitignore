@@ -2,7 +2,11 @@ node_modules/
 artifacts/
 cache/
 dist/
-deployments/
+deployments/*
+!deployments/hadrian.json
+!deployments/hadrian-oracle-shims.json
+!deployments/hadrian-oracle-lean-shims.json
+!deployments/hadrian-rome-price-oracle.json
 .env
 .env.local
 .DS_Store

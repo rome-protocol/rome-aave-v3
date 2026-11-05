@@ -6,11 +6,11 @@ import { task } from "hardhat/config";
 // faucet with native gas (10 × claimsBudget), and registers each token
 // with the faucet at a 100-unit drop.
 //
-// Writes the addresses to deployments/<network>.json under "_faucet" and
-// "_mockTokens" so /publish-registry-pr (and the demo) can pick them up.
+// Writes `Faucet` and `_mockTokens` to deployments/<network>.json.
 //
-// After this lands, the operator runs `hardhat init-reserve` for each
-// mock so they show up in the Aave demo's Markets list.
+// To list a mock as a reserve, run `hardhat init-reserve` for it. That applies
+// to a market whose oracle is AaveOracle: RomePriceOracle has a fixed
+// four-asset table, so a fifth reserve would make getReservesData revert.
 
 const MOCK_TOKEN_SPECS: { name: string; symbol: string; decimals: number; drop: number }[] = [
   { name: "Hadrian Heat", symbol: "HEAT", decimals: 18, drop: 100 },

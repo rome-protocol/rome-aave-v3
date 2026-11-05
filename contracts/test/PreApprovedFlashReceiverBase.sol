@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: LicenseRef-Rome-Protocol
 pragma solidity ^0.8.10;
 
 import {IFlashLoanReceiver} from "../misc/flashloan/interfaces/IFlashLoanReceiver.sol";
@@ -6,7 +6,7 @@ import {IPool} from "../interfaces/IPool.sol";
 import {IPoolAddressesProvider} from "../interfaces/IPoolAddressesProvider.sol";
 
 /// @notice Abstract base for Aave V3 multi-asset flash loan receivers on Rome.
-/// @dev See `CLAUDE.md § "Multi-asset Flash Loan Pattern"` for the Rome rationale.
+/// @dev See docs/AAVE-V3-ON-ROME.md, section "Flash loans", for the Rome rationale.
 ///
 /// Why this pattern exists:
 ///

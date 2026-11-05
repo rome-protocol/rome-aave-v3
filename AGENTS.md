@@ -1,13 +1,14 @@
 <!--
-CANONICAL AGENTS.md (v3.5). Ships in every public Rome repo + the create-rome-app
+CANONICAL AGENTS.md (v3.7). Ships in every public Rome repo + the create-rome-app
 scaffold. Public-safe: no internal hostnames, infra/platform names, or internal
 repo paths. v3.2: the `rome` CLI + MCP server shipped (rome-protocol/rome-cli) —
 tooling references are now real commands, not futures. v3.3: the Solana lane is
 the SDK's v1 lane (submitRomeTxV1, one Solana v1 transaction per call); new rule:
 grant each SPL wrapper once per wallet; lookup-table advice dropped (Rome sends v1
-transactions). v3.4: the Solana lane's example wallet is Solflare (Phantom does not
-sign Solana v1 transactions on devnet yet). v3.5: gas rule from measurements; who
-signs in the parity pattern; a CLI install that works. Organized by where the builder starts —
+transactions). v3.4: the Solana lane's example wallet is Solflare. v3.5: gas rule from measurements; who
+signs in the parity pattern; a CLI install that works. v3.6: Hadrian is
+Rome's public testnet (the only test chain the docs target). v3.7 (this repo only):
+a section on what this repo's code does. Organized by where the builder starts —
 the depth lives in the docs + the example repos it points to.
 Keep it short; an agent reads it before writing a line.
 -->
@@ -22,11 +23,20 @@ This file gives you the facts, organized by **what you're starting from**. Find 
 - **One state, two lanes.** MetaMask (an EVM key) and a Solana wallet such as Solflare (a Solana key) drive the **same** contracts and the **same** state. A Solana user signs with their **Solana** key — no EVM keypair; Rome derives their EVM address (a synthetic address) from that key. An EVM user's on-chain identity is a Rome-derived PDA (`external_auth`).
 - **SPL *is* ERC-20, automatically.** Any SPL token is already an ERC-20 on Rome — the **same account**, no bridge and no wrapped-asset hop. An LP or position token minted as an SPL mint is spendable as an ERC-20 too, and vice-versa, once the wallet has granted the token's wrapper (rule 4).
 
+## What this repo is
+`rome-aave-v3` holds the contracts and deploy tooling for Aave v3.6 on Rome (Hadrian, chain 200010): a Hardhat 3 project with a slim cut of [aave-v3-origin](https://github.com/aave-dao/aave-v3-origin) vendored unmodified under `contracts/` (main at commit 1e3d70c, February 2026, after the v3.6.0 release; four files are from the v3.6.0 tag, see `NOTICE`), each file keeping its upstream licence header. The web app is [rome-aave-v3-demo](https://github.com/rome-protocol/rome-aave-v3-demo). The deep dive is [`docs/AAVE-V3-ON-ROME.md`](./docs/AAVE-V3-ON-ROME.md).
+- **Rome-authored contracts** (`LicenseRef-Rome-Protocol`): `contracts/misc/RomePriceOracle.sol` (the pool's price oracle: reads PriceBook entries directly, with a fixed fallback price), `contracts/misc/PriceBookEntryShim.sol` and `contracts/misc/BookFeedToV2ShimResilient.sol` (price sources for `AaveOracle`), and the test and receiver contracts under `contracts/test/`.
+- **Tokens.** Reserves are `SPL_ERC20_cached` wrappers from [rome-solidity](https://github.com/rome-protocol/rome-solidity); the protocol stays canonical. A wallet grants each wrapper once before its first `supply` or `repay` (rule 4).
+- **Flash loans.** A multi-asset `flashLoan` with two or more wrappers must not approve inside the callback: it adds SPL accounts past the transaction's account cap. Inherit `contracts/test/PreApprovedFlashReceiverBase.sol`, which approves the pool once in `init()`.
+- **Tooling.** `tasks/` holds the Hardhat tasks (`deploy`, `init-reserve`, `seed-pool`, `deploy-flash-receiver`, and more), `scripts/` the oracle-switch, reserve-cap and wBTC tools, `test/` three unit tests run as `npx hardhat run test/<name>.test.ts`. Deployed addresses are in `deployments/hadrian*.json`.
+- **Keys.** Signing uses the Hardhat keystore (`npx hardhat keystore set HADRIAN_PRIVATE_KEY`); never put a key on a command line or in a file.
+- **Checks.** `yarn install --frozen-lockfile`, `npx tsc --noEmit`, `npx hardhat compile`, then the three tests.
+
 ## Find your starting point
 
 ### You have Solidity — a contract, or an EVM app to fork
 Deploy it as it is, with standard Hardhat or Foundry (one caveat: `forge script` needs `--skip-simulation`; `forge create`, `cast`, and Hardhat work normally). The same contract serves EVM users (MetaMask) and Solana users (Solflare, for example) — you don't write per-audience code, and nothing about your Solidity changes. When you want Solana liquidity or data, call a Solana program via CPI (see the rules below).
-**Read:** [compound-on-rome-comet](https://github.com/rome-protocol/compound-on-rome-comet) and [rome-aave-v3](https://github.com/rome-protocol/rome-aave-v3) — Compound v3 and Aave v3 running unchanged.
+**Read:** [compound-on-rome-comet](https://github.com/rome-protocol/compound-on-rome-comet) and [rome-aave-v3](https://github.com/rome-protocol/rome-aave-v3) — Compound v3 and Aave v3 deployed with their protocol contracts kept canonical.
 
 ### You have a Solana program
 It keeps doing what it already does for your Solana users — no changes. To open it to EVM (and other-chain) users, write a **thin Solidity wrapper that CPIs your program**: the accounts array and instruction data are the same layout your program already expects. Make your instructions **authority-agnostic** — act on whichever authority signs — so the signer can be a Solana wallet pubkey *or* your wrapper's own PDA. The precompile signs as `msg.sender` (the wrapper's own PDA), not `tx.origin`; an EVM user's `external_auth` PDA signs only when the user calls the precompile directly.
@@ -52,7 +62,7 @@ Which side holds the core logic is a **soft, per-app judgment** — weigh existi
 For example, performance might tip it: native can be much cheaper than the EVM interpreter for heavy logic (one swap we measured ran ~6× cheaper) — consider it if you have a hot compute-heavy path. It's one input, not a rule.
 
 ## Getting funded — USDC is the gas token; bridge it in
-Every Rome chain's gas token is **USDC** (Circle). **There is no Rome faucet.** Fund a wallet by **bridging USDC into Rome** from a chain where you already have it: get testnet USDC on a source chain (Sepolia, an L2, or Solana) from *that chain's* own faucet, then bridge to Hadrian/Martius (the on-chain `settle_inbound_bridge`, orchestrated by `rome-bridge-api`; CCTP for USDC). One command: `rome fund <chain> --from sepolia --amount 1`. Holding ETH instead? `rome bridge <chain> --from sepolia --amount 0.002 --asset eth` lands it as wETH (Wormhole). Bridging **out** (`--to`) is also one command — note the first outbound needs a one-time `rome activate <chain>` (~2 USDC), and the destination claim is your own step.
+Every Rome chain's gas token is **USDC** (Circle). **There is no Rome faucet.** Fund a wallet by **bridging USDC into Rome** from a chain where you already have it: get testnet USDC on a source chain (Sepolia, an L2, or Solana) from *that chain's* own faucet, then bridge to Hadrian, the testnet (the on-chain `settle_inbound_bridge`, orchestrated by `rome-bridge-api`; CCTP for USDC). One command: `rome fund <chain> --from sepolia --amount 1`. Holding ETH instead? `rome bridge <chain> --from sepolia --amount 0.002 --asset eth` lands it as wETH (Wormhole). Bridging **out** (`--to`) is also one command — note the first outbound needs a one-time `rome activate <chain>` (~2 USDC), and the destination claim is your own step.
 
 ## The rules that bite on every path (different from vanilla EVM)
 
@@ -71,4 +81,4 @@ The TypeScript SDK ([`rome-sdk-ts`](https://github.com/rome-protocol/rome-sdk-ts
 [`rome-cli`](https://github.com/rome-protocol/rome-cli) is the dev CLI + MCP server built for exactly this file's reader (one-shot: `npx github:rome-protocol/rome-cli#v0.11.0 <command>`; durable: clone the repo at a tag (`git clone --branch v0.11.0 https://github.com/rome-protocol/rome-cli`), then `npm install && npm install -g .` — a plain `npm i -g github:…` fails, and an unpinned `npx` can run an old cached copy). **Reads** run on both surfaces, no keys: `facts` (chain/tokens/contracts/gas/balance/programs) · `cookbook` (patterns / cpi-recipe / errors) · `call` · `doctor` · `tx` · `preset` (foundry/hardhat config). Register the MCP server once (after the durable install, so `rome` is on your PATH) — `{"mcpServers": {"rome": {"command": "rome", "args": ["mcp"]}}}` — and the tools are `facts_chain`, `facts_tokens`, `facts_contracts`, `cookbook_patterns`, `cookbook_errors`, `doctor`, `tx`, `preset`, …. **Actions** are CLI-only and key-gated (`ROME_EVM_KEY` from the environment, never a flag, never on MCP): `new` · `deploy` · `send` · `fund` · `bridge` · `activate` · `verify`. The MCP surface can never sign or move funds.
 
 ## Verify before you claim done
-Before saying a change works: check RPC config, confirm every write goes through the SDK (`submitRomeTx` / `submitRomeTxV1`), and run a **both-lane smoke** against devnet with a fresh wallet and a tiny amount. The one-command works-gate is **`rome verify <chain> --path <solidity|solana-program|from-home>`** — dual-lane parity for a contract, an EVM-lane call driving a Solana program via CPI, or the full bridge-in → act → bridge-out round trip. For a scaffolded app, `npm run demo` is the funded dual-lane proof.
+Before saying a change works: check RPC config; in your own app, confirm every write goes through the SDK (`submitRomeTx` / `submitRomeTxV1`), and run a **both-lane smoke** against the Hadrian testnet with a fresh wallet and a tiny amount. The one-command works-gate is **`rome verify <chain> --path <solidity|solana-program|from-home>`** — dual-lane parity for a contract, an EVM-lane call driving a Solana program via CPI, or the full bridge-in → act → bridge-out round trip. For a scaffolded app, `npm run demo` is the funded dual-lane proof.
